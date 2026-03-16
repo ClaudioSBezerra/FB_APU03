@@ -62,7 +62,7 @@ export default function TiposProjeto() {
     if (!form.code.trim()) { toast.error('Código é obrigatório'); return }
     setSaving(true)
     try {
-      const url    = dialog === 'edit' ? `/api/pm/project-types/${selected!.id}` : '/api/pm/project-types'
+      const url    = dialog === 'edit' ? `/api/pm/project-types/${selected!.id}` : '/api/pm/project-types/'
       const method = dialog === 'edit' ? 'PUT' : 'POST'
       const res = await fetch(url, {
         method,

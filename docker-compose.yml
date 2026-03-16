@@ -5,15 +5,13 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: always
-    # ports:
-    #   - "8080:8080"
     ports:
       - "8083:8081"
     expose:
       - "8081"
     environment:
       - PORT=8081
-      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable
+      - DATABASE_URL=${DATABASE_URL}
       - REDIS_ADDR=redis:6379
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
@@ -21,12 +19,10 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_FROM=${SMTP_FROM}
       - APP_URL=${APP_URL:-https://projetos.fbtax.cloud}
+      - JWT_SECRET=${JWT_SECRET}
       - ZAI_API_KEY=${ZAI_API_KEY:-}
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
+      - redis
     volumes:
       - api_uploads:/root/uploads
     networks:
@@ -51,34 +47,12 @@ services:
     networks:
       - fb_net
 
-  # Banco de Dados
-  db:
-    image: postgres:15-alpine
-    restart: always
-    environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
-    # ports:
-    #   - "${DB_PORT}:5432"
-    volumes:
-      - postgres_data_v2:/var/lib/postgresql/data
-    networks:
-      - fb_net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # Redis
   redis:
     image: redis:alpine
     restart: always
     sysctls:
       - net.core.somaxconn=1024
-    # ports:
-    #   - "${REDIS_PORT}:6379"
     networks:
       - fb_net
 
@@ -87,5 +61,4 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data_v2:
   api_uploads:

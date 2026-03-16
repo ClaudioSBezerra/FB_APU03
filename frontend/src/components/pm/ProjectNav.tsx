@@ -2,12 +2,13 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
   Kanban, LayoutDashboard, List, Users, Settings2,
-  Milestone, GitBranch
+  Milestone, GitBranch, Zap
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { label: 'Kanban',    path: 'kanban',    icon: Kanban },
+  { label: 'Épicos',    path: 'epics',     icon: Zap },
   { label: 'Backlog',   path: 'backlog',   icon: List },
   { label: 'Sprints',   path: 'sprints',   icon: GitBranch },
   { label: 'Fases',     path: 'phases',    icon: Milestone },

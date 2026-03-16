@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface Props {
   projectId: string
@@ -91,6 +92,7 @@ export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', default
 
   async function handleCreate() {
     if (!form.title.trim()) { toast.error('Título é obrigatório'); return }
+    if (!form.epic_id || form.epic_id === NONE) { toast.error('Épico é obrigatório'); return }
     setSaving(true)
     try {
       const res = await fetch(`/api/pm/projects/${projectId}/tasks`, {
@@ -196,8 +198,31 @@ export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', default
             </div>
           </div>
 
-          {/* Sprint, Phase, Epic */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* Épico — obrigatório */}
+          <div className="grid gap-1.5">
+            <Label>Épico *</Label>
+            <Select value={form.epic_id === NONE ? '' : form.epic_id} onValueChange={v => setForm(f => ({ ...f, epic_id: v }))}>
+              <SelectTrigger className={cn('h-8 text-xs', (!form.epic_id || form.epic_id === NONE) && 'border-red-300')}>
+                <SelectValue placeholder="Selecione o épico..." />
+              </SelectTrigger>
+              <SelectContent>
+                {epics.map((e: { id: string; name: string; color: string }) => (
+                  <SelectItem key={e.id} value={e.id} className="text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: e.color }} />
+                      {e.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {epics.length === 0 && (
+              <p className="text-[10px] text-red-500">Crie épicos antes de criar tarefas.</p>
+            )}
+          </div>
+
+          {/* Sprint, Phase */}
+          <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1.5">
               <Label>Sprint</Label>
               <Select value={form.sprint_id} onValueChange={v => setForm(f => ({ ...f, sprint_id: v }))}>
@@ -218,23 +243,6 @@ export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', default
                   <SelectItem value={NONE} className="text-xs text-muted-foreground">— nenhuma —</SelectItem>
                   {phases.map((p: { id: string; name: string }) => (
                     <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Épico</Label>
-              <Select value={form.epic_id} onValueChange={v => setForm(f => ({ ...f, epic_id: v }))}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="— nenhum —" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE} className="text-xs text-muted-foreground">— nenhum —</SelectItem>
-                  {epics.map((e: { id: string; name: string; color: string }) => (
-                    <SelectItem key={e.id} value={e.id} className="text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: e.color }} />
-                        {e.name}
-                      </div>
-                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

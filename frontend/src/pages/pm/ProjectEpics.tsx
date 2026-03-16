@@ -249,7 +249,15 @@ export default function ProjectEpics() {
                       </TableCell>
                       <TableCell className="py-1.5 px-3">
                         {total > 0 ? (
-                          <span className="text-xs text-muted-foreground">{done}/{total}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-green-500 transition-all"
+                                style={{ width: `${Math.round((done / total) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground">{done}/{total}</span>
+                          </div>
                         ) : (
                           <span className="text-xs italic text-muted-foreground">—</span>
                         )}

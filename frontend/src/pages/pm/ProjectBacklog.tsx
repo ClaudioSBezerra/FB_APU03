@@ -1,23 +1,17 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
-} from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import {
   Plus, Download, Loader2, Search,
-  ChevronDown, ChevronRight,
-  Pencil, Trash2, Zap
+  ChevronDown, ChevronRight, Zap
 } from 'lucide-react'
 import { TaskDetailSheet } from '@/components/pm/TaskDetailSheet'
 import { CreateTaskDialog } from '@/components/pm/CreateTaskDialog'
@@ -50,17 +44,6 @@ const EPIC_STATUS_CFG: Record<string, { label: string; cls: string }> = {
   cancelled:   { label: 'Cancelado',    cls: 'bg-gray-50 text-gray-400 border-gray-200' },
 }
 
-const EPIC_COLORS = [
-  { value: '#6366f1', label: 'Indigo' },
-  { value: '#3b82f6', label: 'Azul' },
-  { value: '#10b981', label: 'Verde' },
-  { value: '#f59e0b', label: 'Ambar' },
-  { value: '#ef4444', label: 'Vermelho' },
-  { value: '#8b5cf6', label: 'Roxo' },
-  { value: '#06b6d4', label: 'Ciano' },
-  { value: '#f97316', label: 'Laranja' },
-]
-
 const TASK_STATUS_COLORS: Record<string, string> = {
   backlog:     'bg-gray-100 text-gray-600',
   todo:        'bg-blue-100 text-blue-700',
@@ -80,15 +63,11 @@ const PRIORITY_DOT: Record<string, string> = {
   critical: 'bg-red-500', high: 'bg-orange-400', medium: 'bg-yellow-400', low: 'bg-gray-300',
 }
 
-const emptyEpicForm = {
-  name: '', description: '', color: '#6366f1',
-  status: 'open', start_date: '', end_date: '', order_index: 0,
-}
-
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function ProjectBacklog() {
   const { id: projectId } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { token, companyId, user } = useAuth()
   const qc = useQueryClient()
   const authHeaders = { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' }
@@ -97,15 +76,10 @@ export default function ProjectBacklog() {
   const [statusFilter, setStatusFilter] = useState('')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
-  // null = dialog fechado, '' = sem epic, 'uuid' = com epic pre-selecionado
+  // null = dialog fechado, 'uuid' = com epic pre-selecionado
   const [creatingForEpic, setCreatingForEpic] = useState<string | null>(null)
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-
-  const [epicDialog, setEpicDialog] = useState<'create' | 'edit' | null>(null)
-  const [selEpic, setSelEpic]       = useState<Epic | null>(null)
-  const [epicForm, setEpicForm]     = useState(emptyEpicForm)
-  const [savingEpic, setSavingEpic] = useState(false)
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
@@ -180,72 +154,6 @@ export default function ProjectBacklog() {
     a.click()
   }
 
-  // ── Epic CRUD ──────────────────────────────────────────────────────────────
-
-  function openCreateEpic() {
-    setEpicForm({ ...emptyEpicForm, order_index: epics.length })
-    setSelEpic(null)
-    setEpicDialog('create')
-  }
-
-  function openEditEpic(e: Epic) {
-    setEpicForm({
-      name: e.name, description: e.description ?? '',
-      color: e.color ?? '#6366f1', status: e.status,
-      start_date: e.start_date ?? '', end_date: e.end_date ?? '',
-      order_index: e.order_index,
-    })
-    setSelEpic(e)
-    setEpicDialog('edit')
-  }
-
-  async function handleSaveEpic() {
-    if (!epicForm.name.trim()) { toast.error('Nome e obrigatorio'); return }
-    setSavingEpic(true)
-    try {
-      const url    = epicDialog === 'edit'
-        ? `/api/pm/projects/${projectId}/epics/${selEpic!.id}`
-        : `/api/pm/projects/${projectId}/epics`
-      const method = epicDialog === 'edit' ? 'PUT' : 'POST'
-      const res = await fetch(url, {
-        method,
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...epicForm,
-          start_date: epicForm.start_date || null,
-          end_date: epicForm.end_date || null,
-        }),
-      })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error) }
-
-      const created = epicDialog === 'create' ? await res.json().catch(() => null) : null
-      toast.success(epicDialog === 'edit' ? 'Epico atualizado!' : 'Epico criado!')
-      invalidate()
-      setEpicDialog(null)
-      if (created?.id) {
-        setExpanded(prev => new Set([...prev, created.id]))
-      }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao salvar')
-    } finally {
-      setSavingEpic(false)
-    }
-  }
-
-  async function handleDeleteEpic(e: Epic) {
-    if (!confirm(`Excluir epico "${e.name}"? As tarefas nao serao removidas.`)) return
-    try {
-      const res = await fetch(`/api/pm/projects/${projectId}/epics/${e.id}`, {
-        method: 'DELETE', headers: authHeaders,
-      })
-      if (!res.ok) throw new Error()
-      toast.success('Epico excluido')
-      invalidate()
-    } catch {
-      toast.error('Erro ao excluir')
-    }
-  }
-
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const orphans = tasksWithoutEpic()
@@ -285,54 +193,56 @@ export default function ProjectBacklog() {
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportBacklog}>
           <Download className="h-3.5 w-3.5 mr-1" /> Excel
         </Button>
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={openCreateEpic}>
-          <Zap className="h-3.5 w-3.5 mr-1" /> Novo Epico
-        </Button>
-        <Button size="sm" className="h-7 text-xs" onClick={() => setCreatingForEpic('')}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
-        </Button>
+        {epics.length > 0 ? (
+          <Button size="sm" className="h-7 text-xs" onClick={() => setCreatingForEpic(epics[0].id)}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
+          </Button>
+        ) : (
+          <Button size="sm" className="h-7 text-xs" onClick={() => navigate(`/pm/${projectId}/epics`)}>
+            <Zap className="h-3.5 w-3.5 mr-1" /> Criar Epicos
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
+      ) : epics.length === 0 ? (
+        /* Empty state — no epics yet */
+        <div className="rounded-lg border border-dashed p-8 text-center space-y-2">
+          <Zap className="h-6 w-6 text-muted-foreground/40 mx-auto" />
+          <p className="text-sm text-muted-foreground">
+            Nenhum epico criado. Crie epicos primeiro para organizar as tarefas do projeto.
+          </p>
+          <Button size="sm" variant="outline" onClick={() => navigate(`/pm/${projectId}/epics`)}>
+            <Zap className="h-3.5 w-3.5 mr-1" /> Ir para Epicos
+          </Button>
+        </div>
       ) : (
         <div className="space-y-2">
 
-          {/* Empty state */}
-          {epics.length === 0 && (
-            <div className="rounded-lg border border-dashed p-8 text-center space-y-2">
-              <Zap className="h-6 w-6 text-muted-foreground/40 mx-auto" />
-              <p className="text-sm text-muted-foreground">
-                Nenhum epico criado. Epicos organizam as tarefas por modulos ou iniciativas.
-              </p>
-              <Button size="sm" variant="outline" onClick={openCreateEpic}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Criar primeiro epico
-              </Button>
-            </div>
-          )}
+          {/* Epic sections — read-only grouping */}
+          {epics.map(epic => {
+            const epicTasks = tasksForEpic(epic.id)
+            return (
+              <EpicSection
+                key={epic.id}
+                epic={epic}
+                tasks={epicTasks}
+                isOpen={expanded.has(epic.id)}
+                onToggle={() => toggleExpand(epic.id)}
+                onAddTask={() => {
+                  setCreatingForEpic(epic.id)
+                  setExpanded(prev => new Set([...prev, epic.id]))
+                }}
+                onSelectTask={setSelectedTask}
+              />
+            )
+          })}
 
-          {/* Epic sections */}
-          {epics.map(epic => (
-            <EpicSection
-              key={epic.id}
-              epic={epic}
-              tasks={tasksForEpic(epic.id)}
-              isOpen={expanded.has(epic.id)}
-              onToggle={() => toggleExpand(epic.id)}
-              onEdit={() => openEditEpic(epic)}
-              onDelete={() => handleDeleteEpic(epic)}
-              onAddTask={() => {
-                setCreatingForEpic(epic.id)
-                setExpanded(prev => new Set([...prev, epic.id]))
-              }}
-              onSelectTask={setSelectedTask}
-            />
-          ))}
-
-          {/* Tarefas sem epico */}
-          {(orphans.length > 0 || epics.length === 0) && (
+          {/* Tarefas orfas (sem epic) — somente se existirem */}
+          {orphans.length > 0 && (
             <div className="rounded-lg border bg-white overflow-hidden">
               <div
                 className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/20 select-none"
@@ -344,103 +254,20 @@ export default function ProjectBacklog() {
                     : <ChevronRight className="h-4 w-4" />}
                 </span>
                 <span className="w-3 h-3 rounded-full shrink-0 bg-gray-300" />
-                <span className="text-sm font-medium flex-1 text-muted-foreground">Sem epico</span>
+                <span className="text-sm font-medium flex-1 text-muted-foreground">Sem epico (legado)</span>
                 <span className="text-xs text-muted-foreground mr-2">
                   {orphans.length} tarefa{orphans.length !== 1 ? 's' : ''}
                 </span>
               </div>
               {expanded.has('__no_epic__') && (
                 <div className="border-t">
-                  {orphans.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">
-                      Nenhuma tarefa sem epico.
-                    </p>
-                  ) : (
-                    <TaskTable tasks={orphans} onSelect={setSelectedTask} />
-                  )}
+                  <TaskTable tasks={orphans} onSelect={setSelectedTask} />
                 </div>
               )}
             </div>
           )}
         </div>
       )}
-
-      {/* Dialog Epic */}
-      <Dialog open={!!epicDialog} onOpenChange={o => { if (!o) setEpicDialog(null) }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{epicDialog === 'edit' ? 'Editar Epico' : 'Novo Epico'}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="grid gap-1.5">
-              <Label>Nome *</Label>
-              <Input
-                value={epicForm.name}
-                onChange={e => setEpicForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="Ex: Modulo Financeiro"
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Descricao</Label>
-              <Textarea rows={2} value={epicForm.description}
-                onChange={e => setEpicForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Objetivo deste epico..."
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label>Status</Label>
-                <Select value={epicForm.status} onValueChange={v => setEpicForm(f => ({ ...f, status: v }))}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open"        className="text-xs">Aberto</SelectItem>
-                    <SelectItem value="in_progress" className="text-xs">Em andamento</SelectItem>
-                    <SelectItem value="done"        className="text-xs">Concluido</SelectItem>
-                    <SelectItem value="cancelled"   className="text-xs">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Cor</Label>
-                <div className="flex gap-2 flex-wrap pt-1">
-                  {EPIC_COLORS.map(c => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      title={c.label}
-                      className={cn(
-                        'w-6 h-6 rounded-full border-2 transition-transform hover:scale-110',
-                        epicForm.color === c.value ? 'border-foreground scale-110' : 'border-transparent'
-                      )}
-                      style={{ backgroundColor: c.value }}
-                      onClick={() => setEpicForm(f => ({ ...f, color: c.value }))}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label>Inicio</Label>
-                <Input type="date" className="text-xs" value={epicForm.start_date}
-                  onChange={e => setEpicForm(f => ({ ...f, start_date: e.target.value }))} />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Termino</Label>
-                <Input type="date" className="text-xs" value={epicForm.end_date}
-                  onChange={e => setEpicForm(f => ({ ...f, end_date: e.target.value }))} />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEpicDialog(null)}>Cancelar</Button>
-            <Button onClick={handleSaveEpic} disabled={savingEpic}>
-              {savingEpic ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {epicDialog === 'edit' ? 'Salvar' : 'Criar Epico'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Task detail */}
       {selectedTask && (
@@ -453,12 +280,12 @@ export default function ProjectBacklog() {
         />
       )}
 
-      {/* Create task */}
+      {/* Create task — epic pre-selected */}
       {creatingForEpic !== null && (
         <CreateTaskDialog
           projectId={projectId!}
           open={true}
-          defaultEpicId={creatingForEpic || undefined}
+          defaultEpicId={creatingForEpic}
           onClose={() => setCreatingForEpic(null)}
           onCreated={() => { invalidate(); setCreatingForEpic(null) }}
         />
@@ -474,15 +301,14 @@ interface EpicSectionProps {
   tasks: Task[]
   isOpen: boolean
   onToggle: () => void
-  onEdit: () => void
-  onDelete: () => void
   onAddTask: () => void
   onSelectTask: (t: Task) => void
 }
 
-function EpicSection({ epic, tasks, isOpen, onToggle, onEdit, onDelete, onAddTask, onSelectTask }: EpicSectionProps) {
+function EpicSection({ epic, tasks, isOpen, onToggle, onAddTask, onSelectTask }: EpicSectionProps) {
   const total = epic.task_count ?? tasks.length
   const done  = epic.done_count ?? tasks.filter(t => t.status === 'done').length
+  const pct   = total > 0 ? Math.round((done / total) * 100) : 0
   const cfg   = EPIC_STATUS_CFG[epic.status] ?? { label: epic.status, cls: '' }
 
   return (
@@ -504,21 +330,26 @@ function EpicSection({ epic, tasks, isOpen, onToggle, onEdit, onDelete, onAddTas
         <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 h-4 shrink-0', cfg.cls)}>
           {cfg.label}
         </Badge>
-        <span className="text-xs text-muted-foreground shrink-0">
-          {done}/{total} tarefas
-        </span>
+        {total > 0 && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="w-14 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-green-500 transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">{done}/{total}</span>
+          </div>
+        )}
+        {total === 0 && (
+          <span className="text-xs text-muted-foreground shrink-0">0 tarefas</span>
+        )}
         <div
-          className="flex items-center gap-0.5 shrink-0"
+          className="shrink-0"
           onClick={e => e.stopPropagation()}
         >
           <Button variant="ghost" size="icon" className="h-6 w-6" title="Adicionar tarefa" onClick={onAddTask}>
             <Plus className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onEdit}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:text-red-600" onClick={onDelete}>
-            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>

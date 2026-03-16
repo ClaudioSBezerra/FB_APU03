@@ -6,6 +6,7 @@ import ProjectBacklog   from './pages/pm/ProjectBacklog'
 import ProjectMembers   from './pages/pm/ProjectMembers'
 import ProjectSprints   from './pages/pm/ProjectSprints'
 import ProjectPhases    from './pages/pm/ProjectPhases'
+import ProjectEpics     from './pages/pm/ProjectEpics'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/sonner'
 import GestaoAmbiente from './pages/GestaoAmbiente'
@@ -135,7 +136,7 @@ function AppLayout() {
               <Route path="/pm/:id/members"              element={<ProjectMembers />} />
               <Route path="/pm/:id/sprints"              element={<ProjectSprints />} />
               <Route path="/pm/:id/phases"               element={<ProjectPhases />} />
-              <Route path="/pm/:id/epics"                element={<Navigate to="../backlog" relative="path" replace />} />
+              <Route path="/pm/:id/epics"                element={<ProjectEpics />} />
               <Route path="/pm/:id/settings"             element={<ComingSoon title="Configurações do Projeto" />} />
 
               {/* Configurações (compartilhadas APU01/02/03) */}

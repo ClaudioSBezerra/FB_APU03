@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
+import { Ban } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -45,6 +46,7 @@ const COLUMNS = [
   { id: 'review',      label: 'Em Revisão',    icon: Eye,           color: 'text-purple-500',bg: 'bg-purple-50',  border: 'border-purple-200' },
   { id: 'done',        label: 'Concluído',     icon: CheckCircle2,  color: 'text-green-500', bg: 'bg-green-50',   border: 'border-green-200' },
   { id: 'blocked',     label: 'Bloqueado',     icon: AlertOctagon,  color: 'text-red-500',   bg: 'bg-red-50',     border: 'border-red-200' },
+  { id: 'cancelled',   label: 'Cancelado',     icon: Ban,           color: 'text-gray-400',  bg: 'bg-gray-50',    border: 'border-gray-200' },
 ]
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -60,7 +62,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function ProjectKanban() {
   const { id: projectId } = useParams<{ id: string }>()
-  const { token, companyId } = useAuth()
+  const { token, companyId, user } = useAuth()
   const qc = useQueryClient()
   const authHeaders = { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' }
 
@@ -207,6 +209,11 @@ export default function ProjectKanban() {
             qc.invalidateQueries({ queryKey: ['pm-tasks', projectId] })
             setSelectedTask(null)
           }}
+          canCancel={
+            user?.role === 'admin' ||
+            user?.id === projectData?.pm_id ||
+            user?.id === projectData?.owner_id
+          }
         />
       )}
 

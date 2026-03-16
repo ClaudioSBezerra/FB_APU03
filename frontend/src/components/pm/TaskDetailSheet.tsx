@@ -22,6 +22,7 @@ interface Props {
   open: boolean
   onClose: () => void
   onUpdated: () => void
+  canCancel?: boolean
 }
 
 const STATUS_OPTIONS = [
@@ -32,6 +33,8 @@ const STATUS_OPTIONS = [
   { value: 'done',        label: 'Concluído' },
   { value: 'blocked',     label: 'Bloqueado' },
 ]
+
+const CANCEL_OPTION = { value: 'cancelled', label: '🚫 Cancelado' }
 
 const PRIORITY_OPTIONS = [
   { value: 'critical', label: '🔴 Crítico' },
@@ -57,7 +60,7 @@ interface Attachment {
   created_at: string
 }
 
-export function TaskDetailSheet({ task, open, onClose, onUpdated }: Props) {
+export function TaskDetailSheet({ task, open, onClose, onUpdated, canCancel = false }: Props) {
   const { token, companyId } = useAuth()
   const { user } = useAuthContext()
   const authHeaders = { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' }
@@ -257,6 +260,11 @@ export function TaskDetailSheet({ task, open, onClose, onUpdated }: Props) {
                     {STATUS_OPTIONS.map(o => (
                       <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
                     ))}
+                    {(canCancel || task.status === 'cancelled') && (
+                      <SelectItem value={CANCEL_OPTION.value} className="text-xs text-red-600">
+                        {CANCEL_OPTION.label}
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

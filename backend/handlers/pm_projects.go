@@ -366,15 +366,16 @@ func pmGetProject(w http.ResponseWriter, r *http.Request, db *sql.DB, projectID,
 	var p PMProject
 	var sd, ed sql.NullString
 	var cb sql.NullString
+	var ownerID, pmID sql.NullString
 	err := db.QueryRow(`
 		SELECT p.id, p.company_id, p.name, COALESCE(p.description,''), p.status, p.type,
 		       to_char(p.start_date,'YYYY-MM-DD'), to_char(p.end_date,'YYYY-MM-DD'),
-		       p.created_by, p.created_at, p.updated_at
+		       p.created_by, p.created_at, p.updated_at, p.owner_id, p.pm_id
 		FROM pm_projects p
 		WHERE p.id = $1 AND p.company_id = $2
 	`, projectID, companyID).Scan(
 		&p.ID, &p.CompanyID, &p.Name, &p.Description, &p.Status, &p.Type,
-		&sd, &ed, &cb, &p.CreatedAt, &p.UpdatedAt,
+		&sd, &ed, &cb, &p.CreatedAt, &p.UpdatedAt, &ownerID, &pmID,
 	)
 	if err == sql.ErrNoRows {
 		jsonErr(w, http.StatusNotFound, "Project not found")
@@ -384,6 +385,8 @@ func pmGetProject(w http.ResponseWriter, r *http.Request, db *sql.DB, projectID,
 		jsonErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if ownerID.Valid { p.OwnerID = &ownerID.String }
+	if pmID.Valid { p.PmID = &pmID.String }
 	if sd.Valid {
 		p.StartDate = &sd.String
 	}

@@ -26,6 +26,7 @@ const STATUS_OPTIONS = [
   { value: 'review',      label: 'Em Revisão' },
   { value: 'done',        label: 'Concluído' },
   { value: 'blocked',     label: 'Bloqueado' },
+  { value: 'cancelled',   label: 'Cancelado' },
 ]
 
 const STATUS_COLORS: Record<string, string> = {
@@ -35,6 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
   review:      'bg-purple-100 text-purple-700',
   done:        'bg-green-100 text-green-700',
   blocked:     'bg-red-100 text-red-700',
+  cancelled:   'bg-gray-100 text-gray-400 line-through',
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -47,7 +49,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function ProjectBacklog() {
   const { id: projectId } = useParams<{ id: string }>()
-  const { token, companyId } = useAuth()
+  const { token, companyId, user } = useAuth()
   const qc = useQueryClient()
   const authHeaders = { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' }
 
@@ -200,6 +202,11 @@ export default function ProjectBacklog() {
             qc.invalidateQueries({ queryKey: ['pm-tasks', projectId] })
             setSelectedTask(null)
           }}
+          canCancel={
+            user?.role === 'admin' ||
+            user?.id === project?.pm_id ||
+            user?.id === project?.owner_id
+          }
         />
       )}
 

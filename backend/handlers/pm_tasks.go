@@ -86,7 +86,8 @@ func PMTasksHandler(db *sql.DB) http.HandlerFunc {
 			}
 		case "status":
 			if r.Method == http.MethodPatch {
-				pmMoveTaskStatus(w, r, db, taskID, userID)
+				globalRole, _ := claims["role"].(string)
+				pmMoveTaskStatus(w, r, db, taskID, userID, globalRole)
 			} else {
 				jsonErr(w, http.StatusMethodNotAllowed, "Method not allowed")
 			}
@@ -328,7 +329,7 @@ func pmDeleteTask(w http.ResponseWriter, db *sql.DB, taskID, userID string) {
 }
 
 // PATCH /api/pm/tasks/{id}/status
-func pmMoveTaskStatus(w http.ResponseWriter, r *http.Request, db *sql.DB, taskID, userID string) {
+func pmMoveTaskStatus(w http.ResponseWriter, r *http.Request, db *sql.DB, taskID, userID, globalRole string) {
 	var req struct {
 		Status string `json:"status"`
 	}
@@ -338,7 +339,7 @@ func pmMoveTaskStatus(w http.ResponseWriter, r *http.Request, db *sql.DB, taskID
 	}
 	validStatuses := map[string]bool{
 		"backlog": true, "todo": true, "in_progress": true,
-		"review": true, "done": true, "blocked": true,
+		"review": true, "done": true, "blocked": true, "cancelled": true,
 	}
 	if !validStatuses[req.Status] {
 		jsonErr(w, http.StatusBadRequest, "Invalid status")
@@ -348,6 +349,21 @@ func pmMoveTaskStatus(w http.ResponseWriter, r *http.Request, db *sql.DB, taskID
 	var oldStatus, projectID string
 	db.QueryRow(`SELECT status, project_id FROM pm_tasks WHERE id=$1`, taskID).Scan(&oldStatus, &projectID)
 
+	// "cancelled" só pode ser definido por admin global ou pm/po no projeto
+	if req.Status == "cancelled" {
+		if globalRole != "admin" {
+			var memberRole string
+			err := db.QueryRow(`
+				SELECT role FROM pm_project_members
+				WHERE project_id=$1 AND user_id=$2
+			`, projectID, userID).Scan(&memberRole)
+			if err != nil || (memberRole != "pm" && memberRole != "po") {
+				jsonErr(w, http.StatusForbidden, "Apenas PM, PO ou admin podem cancelar tarefas")
+				return
+			}
+		}
+	}
+
 	resolvedAt := "NULL"
 	if req.Status == "done" {
 		resolvedAt = "NOW()"
@@ -355,7 +371,7 @@ func pmMoveTaskStatus(w http.ResponseWriter, r *http.Request, db *sql.DB, taskID
 	_ = resolvedAt
 
 	var err error
-	if req.Status == "done" {
+	if req.Status == "done" || req.Status == "cancelled" {
 		_, err = db.Exec(`UPDATE pm_tasks SET status=$1, updated_at=NOW(), resolved_at=NOW() WHERE id=$2`,
 			req.Status, taskID)
 	} else {

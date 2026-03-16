@@ -97,6 +97,11 @@ func PMProjectsHandler(db *sql.DB) http.HandlerFunc {
 			case http.MethodPut, http.MethodPatch:
 				pmUpdateProject(w, r, db, projectID, companyID)
 			case http.MethodDelete:
+				role, _ := claims["role"].(string)
+				if role != "admin" {
+					jsonErr(w, http.StatusForbidden, "Apenas administradores podem excluir projetos")
+					return
+				}
 				pmDeleteProject(w, r, db, projectID, companyID)
 			default:
 				jsonErr(w, http.StatusMethodNotAllowed, "Method not allowed")

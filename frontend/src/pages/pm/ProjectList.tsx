@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner'
 import {
   Plus, Kanban, Users, CheckSquare, Calendar, ChevronRight,
-  FolderKanban, Loader2, Crown, User
+  FolderKanban, Loader2, Crown, User, Trash2
 } from 'lucide-react'
 
 interface Project {
@@ -161,7 +161,8 @@ function UserPicker({
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function ProjectList() {
-  const { token, companyId } = useAuth()
+  const { token, companyId, user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -209,6 +210,22 @@ export default function ProjectList() {
 
   const typeLabel = (code: string) =>
     typesData?.find(t => t.code === code)?.name ?? code
+
+  async function handleDeleteProject(e: React.MouseEvent, p: Project) {
+    e.stopPropagation()
+    if (!confirm(`Excluir o projeto "${p.name}"?\n\nTodas as tarefas, fases, sprints e épicos serão removidos permanentemente.`)) return
+    try {
+      const res = await fetch(`/api/pm/projects/${p.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' },
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error) }
+      toast.success('Projeto excluído')
+      qc.invalidateQueries({ queryKey: ['pm-projects'] })
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao excluir')
+    }
+  }
 
   async function handleCreate() {
     if (!form.name.trim()) { toast.error('Nome é obrigatório'); return }
@@ -356,8 +373,19 @@ export default function ProjectList() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-end text-[10px] text-primary font-medium">
-                  Abrir <ChevronRight className="h-3 w-3 ml-0.5" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-primary font-medium flex items-center">
+                    Abrir <ChevronRight className="h-3 w-3 ml-0.5" />
+                  </span>
+                  {isAdmin && (
+                    <button
+                      className="text-red-400 hover:text-red-600 p-0.5 rounded hover:bg-red-50 transition-colors"
+                      title="Excluir projeto (admin)"
+                      onClick={e => handleDeleteProject(e, p)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               </CardContent>
             </Card>

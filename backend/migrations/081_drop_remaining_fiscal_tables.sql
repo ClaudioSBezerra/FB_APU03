@@ -1,8 +1,4 @@
--- Migration 081: Remove remaining fiscal tables not caught by 080
-DROP TABLE IF EXISTS comunicacoes_agregado CASCADE;
-DROP TABLE IF EXISTS energia_agregado CASCADE;
-DROP TABLE IF EXISTS frete_agregado CASCADE;
-DROP TABLE IF EXISTS reg_c010 CASCADE;
-DROP TABLE IF EXISTS reg_c500 CASCADE;
-DROP TABLE IF EXISTS reg_c600 CASCADE;
-DROP TABLE IF EXISTS reg_d100 CASCADE;
+-- Migration 081: no-op para FB_APU03
+-- As tabelas fiscais pertencem ao FB_APU01/APU02 e são preservadas no banco compartilhado.
+-- Este arquivo existe apenas para manter a sequência de migrations consistente.
+SELECT 1;

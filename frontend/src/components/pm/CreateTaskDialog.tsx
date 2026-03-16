@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,18 @@ export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', default
     story_points: '', due_date: '',
     sprint_id: NONE, phase_id: NONE, epic_id: defaultEpicId ?? NONE, assigned_to: NONE,
   })
+
+  // Reseta o form sempre que o dialog abre ou o épico padrão muda
+  useEffect(() => {
+    if (open) {
+      setForm({
+        title: '', description: '', status: defaultStatus,
+        priority: 'medium', type: 'task',
+        story_points: '', due_date: '',
+        sprint_id: NONE, phase_id: NONE, epic_id: defaultEpicId ?? NONE, assigned_to: NONE,
+      })
+    }
+  }, [open, defaultEpicId, defaultStatus])
 
   const { data: sprintsData } = useQuery({
     queryKey: ['pm-sprints', projectId],
@@ -103,7 +115,7 @@ export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', default
       setForm({
         title: '', description: '', status: defaultStatus, priority: 'medium', type: 'task',
         story_points: '', due_date: '',
-        sprint_id: NONE, phase_id: NONE, epic_id: NONE, assigned_to: NONE,
+        sprint_id: NONE, phase_id: NONE, epic_id: defaultEpicId ?? NONE, assigned_to: NONE,
       })
       onCreated()
     } catch (e: unknown) {

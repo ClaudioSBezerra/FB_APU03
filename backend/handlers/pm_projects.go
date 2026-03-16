@@ -290,6 +290,7 @@ func pmCreateProject(w http.ResponseWriter, r *http.Request, db *sql.DB, company
 		EndDate     *string `json:"end_date"`
 		OwnerID     *string `json:"owner_id"`
 		PmID        *string `json:"pm_id"`
+		TemplateID  *string `json:"template_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		jsonErr(w, http.StatusBadRequest, "Invalid JSON")
@@ -326,6 +327,30 @@ func pmCreateProject(w http.ResponseWriter, r *http.Request, db *sql.DB, company
 	// Garante que o criador também está como membro
 	if userID != pmMemberID {
 		db.Exec(`INSERT INTO pm_project_members (project_id, user_id, role) VALUES ($1,$2,'pm') ON CONFLICT (project_id, user_id) DO NOTHING`, id, userID)
+	}
+
+	// Aplica template: cria fases a partir do template selecionado
+	if req.TemplateID != nil && *req.TemplateID != "" {
+		phaseRows, err := db.Query(`
+			SELECT name, description, order_index, color
+			FROM pm_template_phases
+			WHERE template_id = $1
+			ORDER BY order_index
+		`, *req.TemplateID)
+		if err == nil {
+			defer phaseRows.Close()
+			for phaseRows.Next() {
+				var name, desc, color string
+				var orderIdx int
+				if err := phaseRows.Scan(&name, &desc, &orderIdx, &color); err != nil {
+					continue
+				}
+				db.Exec(`
+					INSERT INTO pm_phases (project_id, name, description, order_index, color, status)
+					VALUES ($1, $2, $3, $4, $5, 'pending')
+				`, id, name, desc, orderIdx, color)
+			}
+		}
 	}
 
 	w.WriteHeader(http.StatusCreated)

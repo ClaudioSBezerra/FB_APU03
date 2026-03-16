@@ -12,6 +12,7 @@ import { Toaster } from '@/components/ui/sonner'
 import GestaoAmbiente from './pages/GestaoAmbiente'
 import AdminUsers from './pages/AdminUsers'
 import TiposProjeto from './pages/TiposProjeto'
+import TemplatesProjeto from './pages/TemplatesProjeto'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
@@ -141,7 +142,8 @@ function AppLayout() {
               {/* Configurações (compartilhadas APU01/02/03) */}
               <Route path="/config/ambiente"       element={<ProtectedRoute><GestaoAmbiente /></ProtectedRoute>} />
               <Route path="/config/usuarios"       element={<AdminRoute><AdminUsers /></AdminRoute>} />
-              <Route path="/config/tipos-projeto"  element={<AdminRoute><TiposProjeto /></AdminRoute>} />
+              <Route path="/config/tipos-projeto"       element={<AdminRoute><TiposProjeto /></AdminRoute>} />
+              <Route path="/config/templates-projeto"  element={<AdminRoute><TemplatesProjeto /></AdminRoute>} />
             </Routes>
           </div>
         </main>

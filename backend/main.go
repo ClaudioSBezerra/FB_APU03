@@ -494,6 +494,9 @@ func main() {
 	http.HandleFunc("/api/pm/users", withAuth(handlers.PMUsersHandler, ""))
 	http.HandleFunc("/api/pm/project-types", withAuth(handlers.PMProjectTypesHandler, ""))
 	http.HandleFunc("/api/pm/project-types/", withAuth(handlers.PMProjectTypesAdminHandler, "admin"))
+	http.HandleFunc("/api/pm/project-templates", withAuth(handlers.PMProjectTemplatesHandler, ""))
+	http.HandleFunc("/api/pm/project-templates/", withAuth(handlers.PMProjectTemplatesAdminHandler, "admin"))
+	http.HandleFunc("/api/pm/template-phases/", withAuth(handlers.PMTemplatePhasesHandler, "admin"))
 
 	// Serve frontend static files (SPA — React Router)
 	// index.html: no-cache para que o browser sempre busque a versão atual após deploy.

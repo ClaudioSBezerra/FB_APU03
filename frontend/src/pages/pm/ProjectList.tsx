@@ -52,6 +52,20 @@ interface ProjectType {
   code: string
 }
 
+interface TemplatePhase {
+  id: string
+  name: string
+  color: string
+  order_index: number
+}
+
+interface Template {
+  id: string
+  name: string
+  description: string
+  phases: TemplatePhase[]
+}
+
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   planning:  { label: 'Planejamento', color: 'bg-blue-100 text-blue-700' },
   active:    { label: 'Ativo',        color: 'bg-green-100 text-green-700' },
@@ -156,8 +170,9 @@ export default function ProjectList() {
     name: '', description: '', status: 'planning', type: 'sap_implementation',
     start_date: '', end_date: '',
   })
-  const [ownerUser, setOwnerUser] = useState<UserOption | null>(null)
-  const [pmUser, setPmUser]       = useState<UserOption | null>(null)
+  const [ownerUser, setOwnerUser]   = useState<UserOption | null>(null)
+  const [pmUser, setPmUser]         = useState<UserOption | null>(null)
+  const [templateId, setTemplateId] = useState<string>('__none__')
 
   const { data, isLoading } = useQuery({
     queryKey: ['pm-projects'],
@@ -174,6 +189,17 @@ export default function ProjectList() {
     queryKey: ['pm-project-types'],
     queryFn: async () => {
       const res = await fetch('/api/pm/project-types', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return []
+      return res.json()
+    },
+  })
+
+  const { data: templatesData = [] } = useQuery<Template[]>({
+    queryKey: ['pm-project-templates'],
+    queryFn: async () => {
+      const res = await fetch('/api/pm/project-templates', {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) return []
@@ -201,6 +227,7 @@ export default function ProjectList() {
           end_date: form.end_date || null,
           owner_id: ownerUser?.id ?? null,
           pm_id: pmUser?.id ?? null,
+          template_id: templateId === '__none__' ? null : templateId,
         }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
@@ -210,6 +237,7 @@ export default function ProjectList() {
       setForm({ name: '', description: '', status: 'planning', type: 'sap_implementation', start_date: '', end_date: '' })
       setOwnerUser(null)
       setPmUser(null)
+      setTemplateId('__none__')
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Erro ao criar')
     } finally {
@@ -338,7 +366,7 @@ export default function ProjectList() {
       </div>
 
       {/* Dialog Criar Projeto */}
-      <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) { setOwnerUser(null); setPmUser(null) } }}>
+      <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) { setOwnerUser(null); setPmUser(null); setTemplateId('__none__') } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Novo Projeto</DialogTitle>
@@ -382,6 +410,40 @@ export default function ProjectList() {
                 </Select>
               </div>
             </div>
+
+            {/* Template */}
+            {templatesData.length > 0 && (
+              <div className="grid gap-1.5">
+                <Label>Template de Fases</Label>
+                <Select value={templateId} onValueChange={setTemplateId}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sem template (fases manuais)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__" className="text-xs">Sem template (fases manuais)</SelectItem>
+                    {templatesData.map(t => (
+                      <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {templateId !== '__none__' && (() => {
+                  const tpl = templatesData.find(t => t.id === templateId)
+                  if (!tpl || tpl.phases.length === 0) return null
+                  return (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {tpl.phases.map(p => (
+                        <span
+                          key={p.id}
+                          className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border"
+                          style={{ borderColor: p.color, color: p.color, backgroundColor: p.color + '18' }}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }} />
+                          {p.name}
+                        </span>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
 
             {/* Dono e PM */}
             <div className="border rounded-md p-3 bg-muted/20 space-y-3">

@@ -23,6 +23,7 @@ export const modules: Record<string, ModuleConfig> = {
       { label: 'Ambiente',       path: '/config/ambiente' },
       { label: 'Usuários',       path: '/config/usuarios' },
       { label: 'Tipos de Projeto', path: '/config/tipos-projeto' },
+      { label: 'Templates',       path: '/config/templates-projeto' },
     ],
   },
 }

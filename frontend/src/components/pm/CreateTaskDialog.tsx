@@ -153,11 +153,18 @@ export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', default
               <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="task"        className="text-xs">Tarefa</SelectItem>
-                  <SelectItem value="story"       className="text-xs">História</SelectItem>
-                  <SelectItem value="bug"         className="text-xs">Bug</SelectItem>
-                  <SelectItem value="improvement" className="text-xs">Melhoria</SelectItem>
-                  <SelectItem value="risk"        className="text-xs">Risco</SelectItem>
+                  <SelectItem value="task"          className="text-xs">Tarefa</SelectItem>
+                  <SelectItem value="story"         className="text-xs">História</SelectItem>
+                  <SelectItem value="bug"           className="text-xs">Bug / Defeito</SelectItem>
+                  <SelectItem value="improvement"   className="text-xs">Melhoria</SelectItem>
+                  <SelectItem value="risk"          className="text-xs">Risco</SelectItem>
+                  <SelectItem value="deliverable"   className="text-xs">Entrega</SelectItem>
+                  <SelectItem value="meeting"       className="text-xs">Reunião</SelectItem>
+                  <SelectItem value="test"          className="text-xs">Teste</SelectItem>
+                  <SelectItem value="document"      className="text-xs">Documento</SelectItem>
+                  <SelectItem value="training"      className="text-xs">Treinamento</SelectItem>
+                  <SelectItem value="configuration" className="text-xs">Configuração</SelectItem>
+                  <SelectItem value="development"   className="text-xs">Desenvolvimento</SelectItem>
                 </SelectContent>
               </Select>
             </div>

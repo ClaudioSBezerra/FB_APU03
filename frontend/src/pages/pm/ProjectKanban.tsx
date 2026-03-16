@@ -13,6 +13,7 @@ import {
 import { TaskDetailSheet } from '@/components/pm/TaskDetailSheet'
 import { CreateTaskDialog } from '@/components/pm/CreateTaskDialog'
 import { ProjectNav } from '@/components/pm/ProjectNav'
+import { TASK_TYPE_LABELS } from './ProjectBacklog'
 import { cn } from '@/lib/utils'
 
 export interface Task {
@@ -57,9 +58,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   low:      'bg-gray-300',
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  story: 'História', task: 'Tarefa', bug: 'Bug', improvement: 'Melhoria', risk: 'Risco',
-}
+const TYPE_LABELS = TASK_TYPE_LABELS
 
 export default function ProjectKanban() {
   const { id: projectId } = useParams<{ id: string }>()

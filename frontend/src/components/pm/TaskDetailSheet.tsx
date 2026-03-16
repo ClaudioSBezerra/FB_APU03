@@ -14,6 +14,7 @@ import {
   Save, Loader2, MessageSquare, Paperclip, Mic, Trash2, Send, Upload
 } from 'lucide-react'
 import { type Task } from '@/pages/pm/ProjectKanban'
+import { TASK_TYPE_LABELS } from '@/pages/pm/ProjectBacklog'
 import { AudioNoteRecorder } from './AudioNoteRecorder'
 import { useAuth as useAuthContext } from '@/contexts/AuthContext'
 
@@ -279,6 +280,17 @@ export function TaskDetailSheet({ task, open, onClose, onUpdated, canCancel = fa
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium">Tipo</label>
+              <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TASK_TYPE_LABELS).map(([val, label]) => (
+                    <SelectItem key={val} value={val} className="text-xs">{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">

@@ -47,6 +47,12 @@ export const modules: Record<string, ModuleConfig> = {
       { label: 'Concluir apuração',   path: '/rfb/concluir-apuracao',       disabled: true },
     ],
   },
+  projetos: {
+    label: 'Projetos',
+    tabs: [
+      { label: 'Meus Projetos', path: '/pm' },
+    ],
+  },
   config: {
     label: 'Configurações',
     tabs: [
@@ -65,6 +71,8 @@ export const modules: Record<string, ModuleConfig> = {
 
 export function getActiveModule(pathname: string): string {
   if (pathname === '/') return 'painel'
+
+  if (pathname.startsWith('/pm')) return 'projetos'
 
   const importPaths = ['/apuracao/saida', '/apuracao/entrada', '/apuracao/cte-entrada']
   if (importPaths.includes(pathname)) return 'importacoes'

@@ -1,0 +1,284 @@
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui/select'
+import { toast } from 'sonner'
+import {
+  Plus, LayoutKanban, Users, CheckSquare, Calendar, ChevronRight,
+  FolderKanban, Loader2
+} from 'lucide-react'
+
+interface Project {
+  id: string
+  name: string
+  description: string
+  status: string
+  type: string
+  start_date: string | null
+  end_date: string | null
+  created_at: string
+  member_count: number
+  task_count: number
+  done_count: number
+}
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  planning:  { label: 'Planejamento', color: 'bg-blue-100 text-blue-700' },
+  active:    { label: 'Ativo',        color: 'bg-green-100 text-green-700' },
+  on_hold:   { label: 'Pausado',      color: 'bg-yellow-100 text-yellow-700' },
+  completed: { label: 'Concluído',    color: 'bg-gray-100 text-gray-600' },
+  cancelled: { label: 'Cancelado',    color: 'bg-red-100 text-red-700' },
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  sap_implementation: 'Implantação SAP',
+  erp_migration:      'Migração ERP',
+  customization:      'Customização',
+  maintenance:        'Manutenção',
+  consulting:         'Consultoria',
+}
+
+export default function ProjectList() {
+  const { token, companyId } = useAuth()
+  const navigate = useNavigate()
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    name: '', description: '', status: 'planning', type: 'sap_implementation',
+    start_date: '', end_date: '',
+  })
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['pm-projects'],
+    queryFn: async () => {
+      const res = await fetch('/api/pm/projects', {
+        headers: { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' },
+      })
+      if (!res.ok) throw new Error('Erro ao carregar projetos')
+      return res.json()
+    },
+  })
+
+  async function handleCreate() {
+    if (!form.name.trim()) { toast.error('Nome é obrigatório'); return }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/pm/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Company-ID': companyId ?? '',
+        },
+        body: JSON.stringify({
+          ...form,
+          start_date: form.start_date || null,
+          end_date: form.end_date || null,
+        }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      toast.success('Projeto criado!')
+      qc.invalidateQueries({ queryKey: ['pm-projects'] })
+      setOpen(false)
+      setForm({ name: '', description: '', status: 'planning', type: 'sap_implementation', start_date: '', end_date: '' })
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao criar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const projects: Project[] = data?.projects ?? []
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+            <FolderKanban className="h-5 w-5 text-primary" />
+            Gestão de Projetos
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Projetos de implantação SAP, ERP e consultoria
+          </p>
+        </div>
+        <Button size="sm" onClick={() => setOpen(true)}>
+          <Plus className="h-4 w-4 mr-1" /> Novo Projeto
+        </Button>
+      </div>
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {/* Empty */}
+      {!isLoading && projects.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 space-y-3">
+          <LayoutKanban className="h-10 w-10 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">Nenhum projeto criado ainda.</p>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> Criar primeiro projeto
+          </Button>
+        </div>
+      )}
+
+      {/* Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {projects.map(p => {
+          const progress = p.task_count > 0
+            ? Math.round((p.done_count / p.task_count) * 100) : 0
+          const st = STATUS_LABELS[p.status] ?? { label: p.status, color: 'bg-gray-100 text-gray-600' }
+          return (
+            <Card
+              key={p.id}
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate(`/pm/${p.id}/kanban`)}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-sm font-semibold leading-tight line-clamp-2">
+                    {p.name}
+                  </CardTitle>
+                  <Badge className={`shrink-0 text-[10px] px-1.5 py-0 ${st.color}`} variant="outline">
+                    {st.label}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {TYPE_LABELS[p.type] ?? p.type}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {p.description && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">{p.description}</p>
+                )}
+
+                {/* Progress */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>{p.done_count}/{p.task_count} tarefas</span>
+                    <span>{progress}%</span>
+                  </div>
+                  <Progress value={progress} className="h-1.5" />
+                </div>
+
+                {/* Meta */}
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3 w-3" /> {p.member_count} membros
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckSquare className="h-3 w-3" /> {p.task_count} tarefas
+                  </span>
+                  {p.end_date && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(p.end_date).toLocaleDateString('pt-BR')}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end text-[10px] text-primary font-medium">
+                  Abrir <ChevronRight className="h-3 w-3 ml-0.5" />
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
+      {/* Dialog Criar Projeto */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo Projeto</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="p-name">Nome *</Label>
+              <Input id="p-name" value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Ex: Implantação SAP S/4HANA — Filial SP"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="p-desc">Descrição</Label>
+              <Textarea id="p-desc" rows={2} value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Objetivo e contexto do projeto..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>Tipo</Label>
+                <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TYPE_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="p-start">Início</Label>
+                <Input id="p-start" type="date" className="text-xs"
+                  value={form.start_date}
+                  onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="p-end">Término</Label>
+                <Input id="p-end" type="date" className="text-xs"
+                  value={form.end_date}
+                  onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Criar Projeto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

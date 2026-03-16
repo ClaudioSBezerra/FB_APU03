@@ -1,4 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
+import ProjectList      from './pages/pm/ProjectList'
+import ProjectKanban    from './pages/pm/ProjectKanban'
+import ProjectDashboard from './pages/pm/ProjectDashboard'
+import ProjectBacklog   from './pages/pm/ProjectBacklog'
+import ProjectMembers   from './pages/pm/ProjectMembers'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/sonner'
 import TabelaAliquotas from './pages/TabelaAliquotas'
@@ -160,6 +165,14 @@ function AppLayout() {
               <Route path="/apuracao/creditos-perdidos" element={<ApuracaoCredPerdidos />} />
               <Route path="/rfb/apuracao-ibs"           element={<PainelApuracaoIBS />} />
               <Route path="/rfb/apuracao-cbs"           element={<PainelApuracaoCBS />} />
+
+              {/* Gestão de Projetos */}
+              <Route path="/pm"                          element={<ProjectList />} />
+              <Route path="/pm/:id/kanban"               element={<ProjectKanban />} />
+              <Route path="/pm/:id/dashboard"            element={<ProjectDashboard />} />
+              <Route path="/pm/:id/backlog"              element={<ProjectBacklog />} />
+              <Route path="/pm/:id/members"              element={<ProjectMembers />} />
+              <Route path="/pm/:id/settings"             element={<ComingSoon title="Configurações do Projeto" />} />
 
               {/* Receita Federal */}
               <Route path="/rfb/gestao-creditos"        element={<GestaoCredIBSCBS />} />

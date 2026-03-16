@@ -483,6 +483,15 @@ func main() {
 	// DANFE generation
 	http.HandleFunc("/api/danfe/", withAuth(handlers.DanfeHandler, ""))
 
+	// -------------------------------------------------------------------------
+	// PM — Módulo de Gestão de Projetos
+	// -------------------------------------------------------------------------
+	http.HandleFunc("/api/pm/projects", withAuth(handlers.PMProjectsHandler, ""))
+	http.HandleFunc("/api/pm/projects/", withAuth(handlers.PMProjectsHandler, ""))
+	http.HandleFunc("/api/pm/tasks/", withAuth(handlers.PMTasksHandler, ""))
+	http.HandleFunc("/api/pm/audio/", withAuth(handlers.PMAudioHandler, ""))
+	http.HandleFunc("/api/pm/attachments/", withAuth(handlers.PMAttachmentsHandler, ""))
+
 	// Serve frontend static files (SPA — React Router)
 	// index.html: no-cache para que o browser sempre busque a versão atual após deploy.
 	// Assets com hash (JS/CSS): cache longo — o hash muda a cada build automaticamente.

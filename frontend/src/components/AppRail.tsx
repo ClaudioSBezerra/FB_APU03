@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderInput, Calculator, Landmark, Settings, LogOut, KeyRound } from 'lucide-react'
+import { LayoutDashboard, FolderInput, Calculator, Landmark, LayoutKanban, Settings, LogOut, KeyRound } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import {
@@ -32,9 +32,10 @@ import { toast } from 'sonner'
 
 const mainItems = [
   { id: 'painel',      icon: LayoutDashboard, label: 'Painel',           path: '/' },
-  { id: 'importacoes', icon: FolderInput,      label: 'Importações',      path: '/apuracao/saida' },
-  { id: 'apuracao',    icon: Calculator,       label: 'Apuração IBS/CBS', path: '/apuracao/saida/notas' },
-  { id: 'rfb',         icon: Landmark,         label: 'Receita Federal',  path: '/rfb/gestao-creditos' },
+  { id: 'projetos',    icon: LayoutKanban,    label: 'Projetos',         path: '/pm' },
+  { id: 'importacoes', icon: FolderInput,     label: 'Importações',      path: '/apuracao/saida' },
+  { id: 'apuracao',    icon: Calculator,      label: 'Apuração IBS/CBS', path: '/apuracao/saida/notas' },
+  { id: 'rfb',         icon: Landmark,        label: 'Receita Federal',  path: '/rfb/gestao-creditos' },
 ]
 
 export function AppRail() {

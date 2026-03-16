@@ -20,6 +20,7 @@ type PMTask struct {
 	ProjectID   string     `json:"project_id"`
 	PhaseID     *string    `json:"phase_id"`
 	SprintID    *string    `json:"sprint_id"`
+	EpicID      *string    `json:"epic_id"`
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
 	Status      string     `json:"status"`
@@ -137,7 +138,7 @@ func pmListTasks(w http.ResponseWriter, r *http.Request, db *sql.DB, projectID, 
 	assignedTo := q.Get("assigned_to")
 
 	query := `
-		SELECT t.id, t.project_id, t.phase_id, t.sprint_id,
+		SELECT t.id, t.project_id, t.phase_id, t.sprint_id, t.epic_id,
 		       t.title, COALESCE(t.description,''), t.status, t.priority, t.type,
 		       t.assigned_to, COALESCE(ua.full_name,''),
 		       t.reporter_id, COALESCE(ur.full_name,''),
@@ -202,7 +203,7 @@ func pmListTasks(w http.ResponseWriter, r *http.Request, db *sql.DB, projectID, 
 
 func pmGetTask(w http.ResponseWriter, db *sql.DB, taskID string) {
 	row := db.QueryRow(`
-		SELECT t.id, t.project_id, t.phase_id, t.sprint_id,
+		SELECT t.id, t.project_id, t.phase_id, t.sprint_id, t.epic_id,
 		       t.title, COALESCE(t.description,''), t.status, t.priority, t.type,
 		       t.assigned_to, COALESCE(ua.full_name,''),
 		       t.reporter_id, COALESCE(ur.full_name,''),
@@ -576,12 +577,12 @@ type rowScanner interface {
 
 func scanTask(row rowScanner) *PMTask {
 	var t PMTask
-	var pid, sid, at, rid sql.NullString
+	var pid, sid, eid, at, rid sql.NullString
 	var sp sql.NullInt64
 	var dd sql.NullString
 	var ra sql.NullTime
 	err := row.Scan(
-		&t.ID, &t.ProjectID, &pid, &sid,
+		&t.ID, &t.ProjectID, &pid, &sid, &eid,
 		&t.Title, &t.Description, &t.Status, &t.Priority, &t.Type,
 		&at, &t.AssigneeName,
 		&rid, &t.ReporterName,
@@ -597,6 +598,9 @@ func scanTask(row rowScanner) *PMTask {
 	}
 	if sid.Valid {
 		t.SprintID = &sid.String
+	}
+	if eid.Valid {
+		t.EpicID = &eid.String
 	}
 	if at.Valid {
 		t.AssignedTo = &at.String

@@ -17,6 +17,7 @@ import { Loader2 } from 'lucide-react'
 interface Props {
   projectId: string
   defaultStatus?: string
+  defaultEpicId?: string
   open: boolean
   onClose: () => void
   onCreated: () => void
@@ -24,7 +25,7 @@ interface Props {
 
 const NONE = '__none__'
 
-export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', open, onClose, onCreated }: Props) {
+export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', defaultEpicId, open, onClose, onCreated }: Props) {
   const { token, companyId } = useAuth()
   const headers = { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' }
   const [saving, setSaving] = useState(false)
@@ -32,7 +33,7 @@ export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', open, o
     title: '', description: '', status: defaultStatus,
     priority: 'medium', type: 'task',
     story_points: '', due_date: '',
-    sprint_id: NONE, phase_id: NONE, epic_id: NONE, assigned_to: NONE,
+    sprint_id: NONE, phase_id: NONE, epic_id: defaultEpicId ?? NONE, assigned_to: NONE,
   })
 
   const { data: sprintsData } = useQuery({

@@ -20,6 +20,7 @@ export interface Task {
   project_id: string
   phase_id: string | null
   sprint_id: string | null
+  epic_id: string | null
   title: string
   description: string
   status: string

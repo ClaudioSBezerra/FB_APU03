@@ -351,6 +351,7 @@ type CreateUserRequest struct {
 	Email         string `json:"email"`
 	Password      string `json:"password"`
 	Role          string `json:"role"`
+	PmRole        string `json:"pm_role"`         // Papel no módulo PM
 	EnvironmentID string `json:"environment_id"` // Optional: link to existing environment
 	GroupID       string `json:"group_id"`        // Optional: link to existing group
 	CompanyID     string `json:"company_id"`      // Optional: link to existing company
@@ -386,10 +387,10 @@ func CreateUserHandler(db *sql.DB) http.HandlerFunc {
 		trialEnds := time.Now().Add(time.Hour * 24 * 14) // 14 days
 		var userID string
 		err = db.QueryRow(`
-			INSERT INTO users (email, password_hash, full_name, trial_ends_at, is_verified, role)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO users (email, password_hash, full_name, trial_ends_at, is_verified, role, pm_role)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			RETURNING id
-		`, req.Email, hash, req.FullName, trialEnds, true, req.Role).Scan(&userID)
+		`, req.Email, hash, req.FullName, trialEnds, true, req.Role, req.PmRole).Scan(&userID)
 
 		if err != nil {
 			log.Printf("Error creating user: %v", err)
@@ -438,6 +439,7 @@ type AdminUser struct {
 	IsVerified      bool      `json:"is_verified"`
 	TrialEndsAt     time.Time `json:"trial_ends_at"`
 	Role            string    `json:"role"`
+	PmRole          string    `json:"pm_role"`
 	CreatedAt       string    `json:"created_at"`
 	EnvironmentID   *string   `json:"environment_id"`
 	EnvironmentName *string   `json:"environment_name"`
@@ -452,7 +454,8 @@ func ListUsersHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rows, err := db.Query(`
 			SELECT DISTINCT ON (u.id)
-			       u.id, u.email, u.full_name, u.is_verified, u.trial_ends_at, u.role, u.created_at,
+			       u.id, u.email, u.full_name, u.is_verified, u.trial_ends_at, u.role,
+			       COALESCE(u.pm_role,''), u.created_at,
 			       e.id, e.name,
 			       eg.id, eg.name,
 			       c.id, c.name
@@ -473,7 +476,8 @@ func ListUsersHandler(db *sql.DB) http.HandlerFunc {
 		var users []AdminUser
 		for rows.Next() {
 			var u AdminUser
-			if err := rows.Scan(&u.ID, &u.Email, &u.FullName, &u.IsVerified, &u.TrialEndsAt, &u.Role, &u.CreatedAt,
+			if err := rows.Scan(&u.ID, &u.Email, &u.FullName, &u.IsVerified, &u.TrialEndsAt, &u.Role,
+				&u.PmRole, &u.CreatedAt,
 				&u.EnvironmentID, &u.EnvironmentName,
 				&u.GroupID, &u.GroupName,
 				&u.CompanyID, &u.CompanyName); err != nil {
@@ -495,6 +499,7 @@ func ListUsersHandler(db *sql.DB) http.HandlerFunc {
 // PromoteUserRequest struct
 type PromoteUserRequest struct {
 	Role       string `json:"role"`        // 'admin' or 'user'
+	PmRole     string `json:"pm_role"`     // papel no módulo PM
 	ExtendDays int    `json:"extend_days"` // Days to add to trial
 	IsOfficial bool   `json:"is_official"` // If true, sets trial to 2099
 }
@@ -519,6 +524,13 @@ func PromoteUserHandler(db *sql.DB) http.HandlerFunc {
 			_, err := db.Exec("UPDATE users SET role = $1 WHERE id = $2", req.Role, userID)
 			if err != nil {
 				http.Error(w, "Failed to update role", http.StatusInternalServerError)
+				return
+			}
+		}
+		if req.PmRole != "" {
+			_, err := db.Exec("UPDATE users SET pm_role = $1 WHERE id = $2", req.PmRole, userID)
+			if err != nil {
+				http.Error(w, "Failed to update pm_role", http.StatusInternalServerError)
 				return
 			}
 		}

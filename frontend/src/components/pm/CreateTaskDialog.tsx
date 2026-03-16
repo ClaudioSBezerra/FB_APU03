@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,14 +22,59 @@ interface Props {
   onCreated: () => void
 }
 
+const NONE = '__none__'
+
 export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', open, onClose, onCreated }: Props) {
   const { token, companyId } = useAuth()
+  const headers = { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' }
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     title: '', description: '', status: defaultStatus,
     priority: 'medium', type: 'task',
     story_points: '', due_date: '',
+    sprint_id: NONE, phase_id: NONE, epic_id: NONE, assigned_to: NONE,
   })
+
+  const { data: sprintsData } = useQuery({
+    queryKey: ['pm-sprints', projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/pm/projects/${projectId}/sprints`, { headers })
+      return res.json()
+    },
+    enabled: open && !!projectId,
+  })
+
+  const { data: phasesData } = useQuery({
+    queryKey: ['pm-phases', projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/pm/projects/${projectId}/phases`, { headers })
+      return res.json()
+    },
+    enabled: open && !!projectId,
+  })
+
+  const { data: epicsData } = useQuery({
+    queryKey: ['pm-epics', projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/pm/projects/${projectId}/epics`, { headers })
+      return res.json()
+    },
+    enabled: open && !!projectId,
+  })
+
+  const { data: membersData } = useQuery({
+    queryKey: ['pm-members', projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/pm/projects/${projectId}/members`, { headers })
+      return res.json()
+    },
+    enabled: open && !!projectId,
+  })
+
+  const sprints = sprintsData?.sprints ?? []
+  const phases  = phasesData?.phases ?? []
+  const epics   = epicsData?.epics ?? []
+  const members = membersData?.members ?? []
 
   async function handleCreate() {
     if (!form.title.trim()) { toast.error('Título é obrigatório'); return }
@@ -36,20 +82,28 @@ export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', open, o
     try {
       const res = await fetch(`/api/pm/projects/${projectId}/tasks`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'X-Company-ID': companyId ?? '',
-        },
+        headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...form,
+          title:       form.title,
+          description: form.description,
+          status:      form.status,
+          priority:    form.priority,
+          type:        form.type,
           story_points: form.story_points ? parseInt(form.story_points) : null,
-          due_date: form.due_date || null,
+          due_date:    form.due_date || null,
+          sprint_id:   form.sprint_id  === NONE ? null : form.sprint_id,
+          phase_id:    form.phase_id   === NONE ? null : form.phase_id,
+          epic_id:     form.epic_id    === NONE ? null : form.epic_id,
+          assigned_to: form.assigned_to === NONE ? null : form.assigned_to,
         }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error) }
       toast.success('Tarefa criada!')
-      setForm({ title: '', description: '', status: defaultStatus, priority: 'medium', type: 'task', story_points: '', due_date: '' })
+      setForm({
+        title: '', description: '', status: defaultStatus, priority: 'medium', type: 'task',
+        story_points: '', due_date: '',
+        sprint_id: NONE, phase_id: NONE, epic_id: NONE, assigned_to: NONE,
+      })
       onCreated()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Erro ao criar')
@@ -60,7 +114,7 @@ export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', open, o
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Nova Tarefa</DialogTitle>
         </DialogHeader>
@@ -121,7 +175,66 @@ export function CreateTaskDialog({ projectId, defaultStatus = 'backlog', open, o
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+
+          {/* Sprint, Phase, Epic */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="grid gap-1.5">
+              <Label>Sprint</Label>
+              <Select value={form.sprint_id} onValueChange={v => setForm(f => ({ ...f, sprint_id: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="— nenhum —" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE} className="text-xs text-muted-foreground">— nenhum —</SelectItem>
+                  {sprints.map((s: { id: string; name: string }) => (
+                    <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Fase</Label>
+              <Select value={form.phase_id} onValueChange={v => setForm(f => ({ ...f, phase_id: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="— nenhuma —" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE} className="text-xs text-muted-foreground">— nenhuma —</SelectItem>
+                  {phases.map((p: { id: string; name: string }) => (
+                    <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Épico</Label>
+              <Select value={form.epic_id} onValueChange={v => setForm(f => ({ ...f, epic_id: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="— nenhum —" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE} className="text-xs text-muted-foreground">— nenhum —</SelectItem>
+                  {epics.map((e: { id: string; name: string; color: string }) => (
+                    <SelectItem key={e.id} value={e.id} className="text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: e.color }} />
+                        {e.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Assignee, Story Points, Due Date */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="grid gap-1.5">
+              <Label>Responsável</Label>
+              <Select value={form.assigned_to} onValueChange={v => setForm(f => ({ ...f, assigned_to: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="— nenhum —" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE} className="text-xs text-muted-foreground">— nenhum —</SelectItem>
+                  {members.map((m: { user_id: string; full_name: string }) => (
+                    <SelectItem key={m.user_id} value={m.user_id} className="text-xs">{m.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid gap-1.5">
               <Label htmlFor="t-sp">Story Points</Label>
               <Input id="t-sp" type="number" min={0} className="text-xs h-8"

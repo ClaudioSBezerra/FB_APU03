@@ -232,6 +232,7 @@ func pmCreateTask(w http.ResponseWriter, r *http.Request, db *sql.DB, projectID,
 		Type        string  `json:"type"`
 		PhaseID     *string `json:"phase_id"`
 		SprintID    *string `json:"sprint_id"`
+		EpicID      *string `json:"epic_id"`
 		AssignedTo  *string `json:"assigned_to"`
 		StoryPoints *int    `json:"story_points"`
 		DueDate     *string `json:"due_date"`
@@ -261,11 +262,11 @@ func pmCreateTask(w http.ResponseWriter, r *http.Request, db *sql.DB, projectID,
 	var id string
 	err := db.QueryRow(`
 		INSERT INTO pm_tasks
-		  (project_id, phase_id, sprint_id, title, description, status, priority, type,
+		  (project_id, phase_id, sprint_id, epic_id, title, description, status, priority, type,
 		   assigned_to, reporter_id, story_points, due_date, order_index)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 		RETURNING id
-	`, projectID, req.PhaseID, req.SprintID, req.Title, req.Description,
+	`, projectID, req.PhaseID, req.SprintID, req.EpicID, req.Title, req.Description,
 		req.Status, req.Priority, req.Type,
 		req.AssignedTo, userID, req.StoryPoints, req.DueDate, maxOrder+1).Scan(&id)
 	if err != nil {
@@ -287,6 +288,7 @@ func pmUpdateTask(w http.ResponseWriter, r *http.Request, db *sql.DB, taskID, us
 		Type        string  `json:"type"`
 		PhaseID     *string `json:"phase_id"`
 		SprintID    *string `json:"sprint_id"`
+		EpicID      *string `json:"epic_id"`
 		AssignedTo  *string `json:"assigned_to"`
 		StoryPoints *int    `json:"story_points"`
 		DueDate     *string `json:"due_date"`
@@ -303,11 +305,11 @@ func pmUpdateTask(w http.ResponseWriter, r *http.Request, db *sql.DB, taskID, us
 	_, err := db.Exec(`
 		UPDATE pm_tasks SET
 		  title=$1, description=$2, status=$3, priority=$4, type=$5,
-		  phase_id=$6, sprint_id=$7, assigned_to=$8, story_points=$9, due_date=$10,
+		  phase_id=$6, sprint_id=$7, epic_id=$8, assigned_to=$9, story_points=$10, due_date=$11,
 		  updated_at=NOW()
-		WHERE id=$11
+		WHERE id=$12
 	`, req.Title, req.Description, req.Status, req.Priority, req.Type,
-		req.PhaseID, req.SprintID, req.AssignedTo, req.StoryPoints, req.DueDate, taskID)
+		req.PhaseID, req.SprintID, req.EpicID, req.AssignedTo, req.StoryPoints, req.DueDate, taskID)
 	if err != nil {
 		jsonErr(w, http.StatusInternalServerError, err.Error())
 		return

@@ -1,16 +1,17 @@
 import { useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
-  Plus, LayoutDashboard, List, Users, Settings2, Loader2,
+  Plus, Loader2,
   AlertOctagon, Circle, Timer, Eye, CheckCircle2, Archive
 } from 'lucide-react'
 import { TaskDetailSheet } from '@/components/pm/TaskDetailSheet'
 import { CreateTaskDialog } from '@/components/pm/CreateTaskDialog'
+import { ProjectNav } from '@/components/pm/ProjectNav'
 import { cn } from '@/lib/utils'
 
 export interface Task {
@@ -60,7 +61,6 @@ const TYPE_LABELS: Record<string, string> = {
 export default function ProjectKanban() {
   const { id: projectId } = useParams<{ id: string }>()
   const { token, companyId } = useAuth()
-  const navigate = useNavigate()
   const qc = useQueryClient()
   const authHeaders = { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' }
 
@@ -124,46 +124,14 @@ export default function ProjectKanban() {
     dragOver.current = colId
   }
 
-  const project = projectData
-
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      {/* Sub-header */}
-      <div className="flex items-center justify-between mb-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate('/pm')}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            Projetos
-          </button>
-          <span className="text-muted-foreground">/</span>
-          <span className="text-xs font-semibold truncate max-w-[200px]">
-            {project?.name ?? '...'}
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/dashboard`)}>
-            <LayoutDashboard className="h-3.5 w-3.5 mr-1" /> Dashboard
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/backlog`)}>
-            <List className="h-3.5 w-3.5 mr-1" /> Backlog
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/members`)}>
-            <Users className="h-3.5 w-3.5 mr-1" /> Equipe
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/settings`)}>
-            <Settings2 className="h-3.5 w-3.5 mr-1" /> Config
-          </Button>
-          <Button size="sm" className="h-7 text-xs"
-            onClick={() => setCreateStatus('todo')}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
-          </Button>
-        </div>
+      <ProjectNav projectId={projectId!} projectName={projectData?.name} />
+      <div className="flex justify-end mb-2 shrink-0">
+        <Button size="sm" className="h-7 text-xs"
+          onClick={() => setCreateStatus('todo')}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
+        </Button>
       </div>
 
       {/* Kanban board */}

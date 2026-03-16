@@ -25,4 +25,4 @@ COPY --from=builder /app/server .
 COPY --from=builder /app/migrations ./migrations
 EXPOSE 8081
 CMD ["./server"]
-# Force Rebuild v5.5.0 - Z.AI Migration
+# FB_APU03 Gestão de Projetos — v1.0.0

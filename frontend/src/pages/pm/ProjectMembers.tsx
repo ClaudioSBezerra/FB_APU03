@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Plus, LayoutKanban, LayoutDashboard, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Loader2 } from 'lucide-react'
+import { ProjectNav } from '@/components/pm/ProjectNav'
 
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   sponsor:    { label: 'Sponsor', color: 'bg-yellow-100 text-yellow-700' },
@@ -36,7 +37,6 @@ interface Member {
 export default function ProjectMembers() {
   const { id: projectId } = useParams<{ id: string }>()
   const { token, companyId } = useAuth()
-  const navigate = useNavigate()
   const qc = useQueryClient()
   const authHeaders = { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' }
 
@@ -109,28 +109,11 @@ export default function ProjectMembers() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      {/* Sub-header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <button onClick={() => navigate('/pm')} className="hover:text-foreground">Projetos</button>
-          <span>/</span>
-          <span className="font-semibold text-foreground">{project?.name ?? '...'}</span>
-          <span>/</span>
-          <span>Equipe</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/kanban`)}>
-            <LayoutKanban className="h-3.5 w-3.5 mr-1" /> Kanban
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/dashboard`)}>
-            <LayoutDashboard className="h-3.5 w-3.5 mr-1" /> Dashboard
-          </Button>
-          <Button size="sm" className="h-7 text-xs" onClick={() => setOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Membro
-          </Button>
-        </div>
+      <ProjectNav projectId={projectId!} projectName={project?.name} />
+      <div className="flex justify-end">
+        <Button size="sm" className="h-7 text-xs" onClick={() => setOpen(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Membro
+        </Button>
       </div>
 
       {/* Members list */}

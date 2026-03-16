@@ -1,0 +1,8 @@
+-- Migration 081: Remove remaining fiscal tables not caught by 080
+DROP TABLE IF EXISTS comunicacoes_agregado CASCADE;
+DROP TABLE IF EXISTS energia_agregado CASCADE;
+DROP TABLE IF EXISTS frete_agregado CASCADE;
+DROP TABLE IF EXISTS reg_c010 CASCADE;
+DROP TABLE IF EXISTS reg_c500 CASCADE;
+DROP TABLE IF EXISTS reg_c600 CASCADE;
+DROP TABLE IF EXISTS reg_d100 CASCADE;

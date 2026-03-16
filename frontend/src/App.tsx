@@ -4,29 +4,14 @@ import ProjectKanban    from './pages/pm/ProjectKanban'
 import ProjectDashboard from './pages/pm/ProjectDashboard'
 import ProjectBacklog   from './pages/pm/ProjectBacklog'
 import ProjectMembers   from './pages/pm/ProjectMembers'
+import ProjectSprints   from './pages/pm/ProjectSprints'
+import ProjectPhases    from './pages/pm/ProjectPhases'
+import ProjectEpics     from './pages/pm/ProjectEpics'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/sonner'
-import TabelaAliquotas from './pages/TabelaAliquotas'
-import TabelaCFOP from './pages/TabelaCFOP'
-import TabelaFornSimples from './pages/TabelaFornSimples'
-import ApelidosFiliais from './pages/ApelidosFiliais'
 import GestaoAmbiente from './pages/GestaoAmbiente'
-import Managers from './pages/Managers'
-import RFBCredentials from './pages/RFBCredentials'
-import RFBApuracao from './pages/RFBApuracao'
-import RFBDebitos from './pages/RFBDebitos'
-import GestaoCredIBSCBS from './pages/GestaoCredIBSCBS'
-import PainelApuracaoIBS from './pages/PainelApuracaoIBS'
-import PainelApuracaoCBS from './pages/PainelApuracaoCBS'
-import ImportarXMLsSaida from './pages/ImportarXMLsSaida'
-import ConsultaNFeSaidas from './pages/ConsultaNFeSaidas'
-import ImportarXMLsEntrada from './pages/ImportarXMLsEntrada'
-import ConsultaNFesEntradas from './pages/ConsultaNFesEntradas'
-import ImportarXMLsCTe from './pages/ImportarXMLsCTe'
-import ConsultaCTesEntradas from './pages/ConsultaCTesEntradas'
-import ApuracaoCredPerdidos from './pages/ApuracaoCredPerdidos'
 import AdminUsers from './pages/AdminUsers'
-import LimparDadosApuracao from './pages/LimparDadosApuracao'
+import TiposProjeto from './pages/TiposProjeto'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
@@ -63,7 +48,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   if (loading) return null
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />
-  if (user?.role !== 'admin') return <Navigate to="/" replace />
+  if (user?.role !== 'admin') return <Navigate to="/pm" replace />
   return <>{children}</>
 }
 
@@ -119,7 +104,7 @@ function AppHeader() {
   return (
     <header className="flex items-center justify-between h-12 border-b bg-white px-4 shrink-0">
       <span className="text-sm font-semibold text-foreground">
-        {moduleCfg?.label ?? 'Apuração Assistida'}
+        {moduleCfg?.label ?? 'Gestão de Projetos'}
       </span>
       <div className="flex items-center gap-2">
         <FilialSelector />
@@ -140,31 +125,7 @@ function AppLayout() {
         <main className="flex-1 overflow-auto">
           <div className="p-4">
             <Routes>
-              <Route path="/" element={<Navigate to="/rfb/gestao-creditos" replace />} />
-
-              {/* Configurações */}
-              <Route path="/config/aliquotas"       element={<TabelaAliquotas />} />
-              <Route path="/config/cfop"            element={<TabelaCFOP />} />
-              <Route path="/config/forn-simples"    element={<TabelaFornSimples />} />
-              <Route path="/config/apelidos-filiais" element={<ApelidosFiliais />} />
-              <Route path="/config/gestores"        element={<Managers />} />
-              <Route path="/config/ambiente"        element={<ProtectedRoute><GestaoAmbiente /></ProtectedRoute>} />
-              <Route path="/config/usuarios"        element={<AdminRoute><AdminUsers /></AdminRoute>} />
-              <Route path="/config/limpar-dados"    element={<AdminRoute><LimparDadosApuracao /></AdminRoute>} />
-              <Route path="/rfb/credenciais"        element={<RFBCredentials />} />
-
-              {/* Importações */}
-              <Route path="/apuracao/saida"         element={<ImportarXMLsSaida />} />
-              <Route path="/apuracao/entrada"       element={<ImportarXMLsEntrada />} />
-              <Route path="/apuracao/cte-entrada"   element={<ImportarXMLsCTe />} />
-
-              {/* Apuração */}
-              <Route path="/apuracao/saida/notas"       element={<ConsultaNFeSaidas />} />
-              <Route path="/apuracao/entrada/notas"     element={<ConsultaNFesEntradas />} />
-              <Route path="/apuracao/cte-entrada/notas" element={<ConsultaCTesEntradas />} />
-              <Route path="/apuracao/creditos-perdidos" element={<ApuracaoCredPerdidos />} />
-              <Route path="/rfb/apuracao-ibs"           element={<PainelApuracaoIBS />} />
-              <Route path="/rfb/apuracao-cbs"           element={<PainelApuracaoCBS />} />
+              <Route path="/" element={<Navigate to="/pm" replace />} />
 
               {/* Gestão de Projetos */}
               <Route path="/pm"                          element={<ProjectList />} />
@@ -172,16 +133,15 @@ function AppLayout() {
               <Route path="/pm/:id/dashboard"            element={<ProjectDashboard />} />
               <Route path="/pm/:id/backlog"              element={<ProjectBacklog />} />
               <Route path="/pm/:id/members"              element={<ProjectMembers />} />
+              <Route path="/pm/:id/sprints"              element={<ProjectSprints />} />
+              <Route path="/pm/:id/phases"               element={<ProjectPhases />} />
+              <Route path="/pm/:id/epics"                element={<ProjectEpics />} />
               <Route path="/pm/:id/settings"             element={<ComingSoon title="Configurações do Projeto" />} />
 
-              {/* Receita Federal */}
-              <Route path="/rfb/gestao-creditos"        element={<GestaoCredIBSCBS />} />
-              <Route path="/rfb/apuracao"               element={<RFBApuracao />} />
-              <Route path="/rfb/debitos"                element={<RFBDebitos />} />
-              <Route path="/rfb/creditos-cbs"           element={<ComingSoon title="Créditos CBS mês corrente" />} />
-              <Route path="/rfb/pagamentos-cbs"         element={<ComingSoon title="Pagamentos CBS mês corrente" />} />
-              <Route path="/rfb/pagamentos-fornecedores" element={<ComingSoon title="Pagamentos CBS a Fornecedores" />} />
-              <Route path="/rfb/concluir-apuracao"      element={<ComingSoon title="Concluir apuração mês anterior" />} />
+              {/* Configurações (compartilhadas APU01/02/03) */}
+              <Route path="/config/ambiente"       element={<ProtectedRoute><GestaoAmbiente /></ProtectedRoute>} />
+              <Route path="/config/usuarios"       element={<AdminRoute><AdminUsers /></AdminRoute>} />
+              <Route path="/config/tipos-projeto"  element={<AdminRoute><TiposProjeto /></AdminRoute>} />
             </Routes>
           </div>
         </main>
@@ -193,16 +153,16 @@ function AppLayout() {
 
 // ── App root ─────────────────────────────────────────────────────────────────
 function App() {
-  console.log('App Version: 1.0.2 — FB_APU02 Apuração Assistida')
+  console.log('App Version: 1.0.0 — FB_APU03 Gestão de Projetos')
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <Routes>
-            <Route path="/login"        element={<Login />} />
-            <Route path="/register"     element={<Register />} />
+            <Route path="/login"          element={<Login />} />
+            <Route path="/register"       element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-senha"  element={<ResetPassword />} />
+            <Route path="/reset-senha"    element={<ResetPassword />} />
             <Route path="/*" element={
               <ProtectedRoute>
                 <FilialProvider>

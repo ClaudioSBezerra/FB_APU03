@@ -11,10 +11,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
 const FEATURES = [
-  "Importação e análise de SPEDs EFD",
-  "Simulador de impacto do IBS e CBS",
-  "Integração direta com a Receita Federal",
-  "Acompanhamento inteligente de riscos de créditos",
+  "Kanban board com drag-and-drop intuitivo",
+  "Dashboard com métricas e gráficos em tempo real",
+  "Controle de sprints, fases e marcos do projeto",
+  "Gravação de áudio com transcrição automática por IA",
 ];
 
 const Login = () => {
@@ -45,7 +45,7 @@ const Login = () => {
 
       login(data);
       toast.success("Login realizado com sucesso!");
-      navigate("/rfb/gestao-creditos");
+      navigate("/pm");
     } catch (error: any) {
       const msg = error.message || "Erro desconhecido";
       setErrorMsg(msg);
@@ -89,47 +89,30 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Badge */}
-          <span
-            className="inline-block px-4 py-1.5 rounded-full text-sm uppercase tracking-widest font-semibold"
-            style={{
-              background: "rgba(255,255,255,0.08)",
-              color: "#e5e7eb",
-              border: "1px solid rgba(255,255,255,0.15)",
-            }}
-          >
-            Gestão da Reforma Tributária
-          </span>
-
           {/* Título */}
           <h1 className="text-white text-5xl font-bold leading-tight mt-5">
-            Apuração Assistida
+            Gestão de
             <br />
-            IBS/CBS
+            Projetos
           </h1>
 
           {/* Subtítulo */}
           <p className="mt-5 text-base leading-relaxed" style={{ color: "#9ca3af" }}>
-            Controle total sobre créditos, débitos e impactos da Reforma Tributária na sua empresa.
+            Gerencie projetos de implementações sistêmicas com equipes multidisciplinares, sprints e acompanhamentos em tempo real.
           </p>
-        </div>
 
-        {/* ── Rodapé do painel ── */}
-        <div className="relative z-10 space-y-5">
-          {/* Bullets de features */}
-          <ul className="space-y-3">
+          <ul className="mt-4 space-y-1">
             {FEATURES.map((feature) => (
               <li key={feature} className="flex items-center gap-3 text-sm" style={{ color: "#d1d5db" }}>
-                <span
-                  className="w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ background: "#ef4444" }}
-                />
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "#ef4444" }} />
                 {feature}
               </li>
             ))}
           </ul>
+        </div>
 
-          <p className="text-[10px]" style={{ color: "#DA0812" }}>v1.0.2</p>
+        <div className="relative z-10">
+          <p className="text-[10px]" style={{ color: "#DA0812" }}>v1.0.0</p>
         </div>
       </div>
 

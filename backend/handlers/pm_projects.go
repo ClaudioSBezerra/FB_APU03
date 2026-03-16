@@ -15,17 +15,21 @@ import (
 // ---------------------------------------------------------------------------
 
 type PMProject struct {
-	ID          string     `json:"id"`
-	CompanyID   string     `json:"company_id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Status      string     `json:"status"`
-	Type        string     `json:"type"`
-	StartDate   *string    `json:"start_date"`
-	EndDate     *string    `json:"end_date"`
-	CreatedBy   *string    `json:"created_by"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID          string    `json:"id"`
+	CompanyID   string    `json:"company_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Status      string    `json:"status"`
+	Type        string    `json:"type"`
+	StartDate   *string   `json:"start_date"`
+	EndDate     *string   `json:"end_date"`
+	CreatedBy   *string   `json:"created_by"`
+	OwnerID     *string   `json:"owner_id"`
+	PmID        *string   `json:"pm_id"`
+	OwnerName   *string   `json:"owner_name"`
+	PmName      *string   `json:"pm_name"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 	// computed
 	MemberCount int `json:"member_count,omitempty"`
 	TaskCount   int `json:"task_count,omitempty"`
@@ -150,6 +154,15 @@ func PMProjectsHandler(db *sql.DB) http.HandlerFunc {
 				} else {
 					jsonErr(w, http.StatusMethodNotAllowed, "Method not allowed")
 				}
+			case "epics":
+				switch r.Method {
+				case http.MethodGet:
+					pmListEpics(w, db, projectID, companyID)
+				case http.MethodPost:
+					pmCreateEpic(w, r, db, projectID, companyID)
+				default:
+					jsonErr(w, http.StatusMethodNotAllowed, "Method not allowed")
+				}
 			case "export":
 				jsonErr(w, http.StatusNotFound, "Use /export/tasks")
 			default:
@@ -194,6 +207,18 @@ func PMProjectsHandler(db *sql.DB) http.HandlerFunc {
 				}
 				return
 			}
+			// /api/pm/projects/{id}/epics/{eid}
+			if sub == "epics" {
+				switch r.Method {
+				case http.MethodPut, http.MethodPatch:
+					pmUpdateEpic(w, r, db, subID, companyID)
+				case http.MethodDelete:
+					pmDeleteEpic(w, db, subID, companyID)
+				default:
+					jsonErr(w, http.StatusMethodNotAllowed, "Method not allowed")
+				}
+				return
+			}
 			_ = projectID
 			jsonErr(w, http.StatusNotFound, "Not found")
 		default:
@@ -210,16 +235,20 @@ func pmListProjects(w http.ResponseWriter, r *http.Request, db *sql.DB, companyI
 	rows, err := db.Query(`
 		SELECT p.id, p.company_id, p.name, COALESCE(p.description,''), p.status, p.type,
 		       to_char(p.start_date,'YYYY-MM-DD'), to_char(p.end_date,'YYYY-MM-DD'),
-		       p.created_by, p.created_at, p.updated_at,
+		       p.created_by, p.owner_id, p.pm_id,
+		       uo.full_name AS owner_name, up.full_name AS pm_name,
+		       p.created_at, p.updated_at,
 		       COUNT(DISTINCT m.id) AS member_count,
 		       COUNT(DISTINCT t.id) AS task_count,
 		       COUNT(DISTINCT t2.id) AS done_count
 		FROM pm_projects p
+		LEFT JOIN users uo ON uo.id = p.owner_id
+		LEFT JOIN users up ON up.id = p.pm_id
 		LEFT JOIN pm_project_members m ON m.project_id = p.id
 		LEFT JOIN pm_tasks t ON t.project_id = p.id
 		LEFT JOIN pm_tasks t2 ON t2.project_id = p.id AND t2.status = 'done'
 		WHERE p.company_id = $1
-		GROUP BY p.id
+		GROUP BY p.id, uo.full_name, up.full_name
 		ORDER BY p.created_at DESC
 	`, companyID)
 	if err != nil {
@@ -231,23 +260,21 @@ func pmListProjects(w http.ResponseWriter, r *http.Request, db *sql.DB, companyI
 	projects := []PMProject{}
 	for rows.Next() {
 		var p PMProject
-		var sd, ed sql.NullString
-		var cb sql.NullString
+		var sd, ed, cb, ownerID, pmID, ownerName, pmName sql.NullString
 		if err := rows.Scan(&p.ID, &p.CompanyID, &p.Name, &p.Description, &p.Status, &p.Type,
-			&sd, &ed, &cb, &p.CreatedAt, &p.UpdatedAt,
+			&sd, &ed, &cb, &ownerID, &pmID, &ownerName, &pmName,
+			&p.CreatedAt, &p.UpdatedAt,
 			&p.MemberCount, &p.TaskCount, &p.DoneCount); err != nil {
 			jsonErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		if sd.Valid {
-			p.StartDate = &sd.String
-		}
-		if ed.Valid {
-			p.EndDate = &ed.String
-		}
-		if cb.Valid {
-			p.CreatedBy = &cb.String
-		}
+		if sd.Valid { p.StartDate = &sd.String }
+		if ed.Valid { p.EndDate = &ed.String }
+		if cb.Valid { p.CreatedBy = &cb.String }
+		if ownerID.Valid { p.OwnerID = &ownerID.String }
+		if pmID.Valid { p.PmID = &pmID.String }
+		if ownerName.Valid { p.OwnerName = &ownerName.String }
+		if pmName.Valid { p.PmName = &pmName.String }
 		projects = append(projects, p)
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{"projects": projects, "count": len(projects)})
@@ -261,6 +288,8 @@ func pmCreateProject(w http.ResponseWriter, r *http.Request, db *sql.DB, company
 		Type        string  `json:"type"`
 		StartDate   *string `json:"start_date"`
 		EndDate     *string `json:"end_date"`
+		OwnerID     *string `json:"owner_id"`
+		PmID        *string `json:"pm_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		jsonErr(w, http.StatusBadRequest, "Invalid JSON")
@@ -270,25 +299,34 @@ func pmCreateProject(w http.ResponseWriter, r *http.Request, db *sql.DB, company
 		jsonErr(w, http.StatusBadRequest, "name is required")
 		return
 	}
-	if req.Status == "" {
-		req.Status = "planning"
-	}
-	if req.Type == "" {
-		req.Type = "sap_implementation"
-	}
+	if req.Status == "" { req.Status = "planning" }
+	if req.Type == ""   { req.Type = "sap_implementation" }
 
 	var id string
 	err := db.QueryRow(`
-		INSERT INTO pm_projects (company_id, name, description, status, type, start_date, end_date, created_by)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id
-	`, companyID, req.Name, req.Description, req.Status, req.Type, req.StartDate, req.EndDate, userID).Scan(&id)
+		INSERT INTO pm_projects (company_id, name, description, status, type, start_date, end_date, created_by, owner_id, pm_id)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id
+	`, companyID, req.Name, req.Description, req.Status, req.Type,
+		req.StartDate, req.EndDate, userID, req.OwnerID, req.PmID).Scan(&id)
 	if err != nil {
 		jsonErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// auto-add creator as PM
-	db.Exec(`INSERT INTO pm_project_members (project_id, user_id, role) VALUES ($1,$2,'pm')`, id, userID)
+	// Adiciona criador como membro com role pm (se não foi especificado um PM distinto)
+	pmMemberID := userID
+	if req.PmID != nil && *req.PmID != "" {
+		pmMemberID = *req.PmID
+	}
+	db.Exec(`INSERT INTO pm_project_members (project_id, user_id, role) VALUES ($1,$2,'pm') ON CONFLICT (project_id, user_id) DO NOTHING`, id, pmMemberID)
+	// Adiciona owner como membro sponsor (se definido e diferente do PM)
+	if req.OwnerID != nil && *req.OwnerID != "" && *req.OwnerID != pmMemberID {
+		db.Exec(`INSERT INTO pm_project_members (project_id, user_id, role) VALUES ($1,$2,'sponsor') ON CONFLICT (project_id, user_id) DO NOTHING`, id, *req.OwnerID)
+	}
+	// Garante que o criador também está como membro
+	if userID != pmMemberID {
+		db.Exec(`INSERT INTO pm_project_members (project_id, user_id, role) VALUES ($1,$2,'pm') ON CONFLICT (project_id, user_id) DO NOTHING`, id, userID)
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"id": id})
@@ -672,6 +710,134 @@ func pmDeleteSprint(w http.ResponseWriter, db *sql.DB, sprintID, companyID strin
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }
 
+
+// ---------------------------------------------------------------------------
+// Epics CRUD
+// ---------------------------------------------------------------------------
+
+type PMEpic struct {
+	ID          string    `json:"id"`
+	ProjectID   string    `json:"project_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Status      string    `json:"status"`
+	Color       string    `json:"color"`
+	StartDate   *string   `json:"start_date"`
+	EndDate     *string   `json:"end_date"`
+	OrderIndex  int       `json:"order_index"`
+	CreatedAt   time.Time `json:"created_at"`
+	TaskCount   int       `json:"task_count"`
+	DoneCount   int       `json:"done_count"`
+}
+
+func pmListEpics(w http.ResponseWriter, db *sql.DB, projectID, companyID string) {
+	rows, err := db.Query(`
+		SELECT e.id, e.project_id, e.name, COALESCE(e.description,''),
+		       e.status, COALESCE(e.color,'#6366f1'),
+		       to_char(e.start_date,'YYYY-MM-DD'), to_char(e.end_date,'YYYY-MM-DD'),
+		       e.order_index, e.created_at,
+		       COUNT(t.id) FILTER (WHERE t.id IS NOT NULL),
+		       COUNT(t.id) FILTER (WHERE t.status = 'done')
+		FROM pm_epics e
+		JOIN pm_projects p ON p.id = e.project_id
+		LEFT JOIN pm_tasks t ON t.epic_id = e.id
+		WHERE e.project_id = $1 AND p.company_id = $2
+		GROUP BY e.id
+		ORDER BY e.order_index, e.created_at
+	`, projectID, companyID)
+	if err != nil {
+		jsonErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+	epics := []PMEpic{}
+	for rows.Next() {
+		var e PMEpic
+		var sd, ed sql.NullString
+		if err := rows.Scan(&e.ID, &e.ProjectID, &e.Name, &e.Description,
+			&e.Status, &e.Color, &sd, &ed, &e.OrderIndex, &e.CreatedAt,
+			&e.TaskCount, &e.DoneCount); err != nil {
+			jsonErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if sd.Valid { e.StartDate = &sd.String }
+		if ed.Valid { e.EndDate = &ed.String }
+		epics = append(epics, e)
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"epics": epics, "count": len(epics)})
+}
+
+func pmCreateEpic(w http.ResponseWriter, r *http.Request, db *sql.DB, projectID, companyID string) {
+	var req struct {
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Status      string  `json:"status"`
+		Color       string  `json:"color"`
+		StartDate   *string `json:"start_date"`
+		EndDate     *string `json:"end_date"`
+		OrderIndex  int     `json:"order_index"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonErr(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		jsonErr(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if req.Status == "" { req.Status = "open" }
+	if req.Color  == "" { req.Color  = "#6366f1" }
+	var id string
+	err := db.QueryRow(`
+		INSERT INTO pm_epics (project_id, name, description, status, color, start_date, end_date, order_index)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id
+	`, projectID, req.Name, req.Description, req.Status, req.Color,
+		req.StartDate, req.EndDate, req.OrderIndex).Scan(&id)
+	if err != nil {
+		jsonErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"id": id})
+}
+
+func pmUpdateEpic(w http.ResponseWriter, r *http.Request, db *sql.DB, epicID, companyID string) {
+	var req struct {
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Status      string  `json:"status"`
+		Color       string  `json:"color"`
+		StartDate   *string `json:"start_date"`
+		EndDate     *string `json:"end_date"`
+		OrderIndex  *int    `json:"order_index"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonErr(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	// PATCH: only order_index
+	if req.Name == "" && req.OrderIndex != nil {
+		db.Exec(`UPDATE pm_epics SET order_index=$1 WHERE id=$2`, *req.OrderIndex, epicID)
+		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+		return
+	}
+	_, err := db.Exec(`
+		UPDATE pm_epics SET name=$1, description=$2, status=$3, color=$4,
+		  start_date=$5, end_date=$6
+		WHERE id=$7
+	`, req.Name, req.Description, req.Status, req.Color, req.StartDate, req.EndDate, epicID)
+	if err != nil {
+		jsonErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+func pmDeleteEpic(w http.ResponseWriter, db *sql.DB, epicID, companyID string) {
+	db.Exec(`DELETE FROM pm_epics WHERE id=$1`, epicID)
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
 // ---------------------------------------------------------------------------
 // Activity Log
 // ---------------------------------------------------------------------------
@@ -755,4 +921,196 @@ func nullStr(s string) interface{} {
 		return nil
 	}
 	return s
+}
+
+// ---------------------------------------------------------------------------
+// PMProjectTypesHandler — GET /api/pm/project-types
+// ---------------------------------------------------------------------------
+
+type PMProjectType struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Code        string `json:"code"`
+	Description string `json:"description"`
+	Active      bool   `json:"active"`
+	OrderIndex  int    `json:"order_index"`
+}
+
+func PMProjectTypesHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// GET /api/pm/project-types  → ativos apenas (uso no select de criação)
+		if r.Method != http.MethodGet {
+			jsonErr(w, http.StatusMethodNotAllowed, "Method not allowed")
+			return
+		}
+		rows, err := db.Query(`
+			SELECT id, name, code, COALESCE(description,''), active, order_index
+			FROM pm_project_types WHERE active = TRUE
+			ORDER BY order_index, name
+		`)
+		if err != nil {
+			jsonErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer rows.Close()
+		types := []PMProjectType{}
+		for rows.Next() {
+			var t PMProjectType
+			if err := rows.Scan(&t.ID, &t.Name, &t.Code, &t.Description, &t.Active, &t.OrderIndex); err != nil {
+				continue
+			}
+			types = append(types, t)
+		}
+		json.NewEncoder(w).Encode(types)
+	}
+}
+
+// PMProjectTypesAdminHandler — CRUD completo (inclui inativos) para /api/pm/project-types/all e /api/pm/project-types/{id}
+func PMProjectTypesAdminHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		rest := strings.TrimPrefix(r.URL.Path, "/api/pm/project-types/")
+		rest = strings.Trim(rest, "/")
+
+		// GET /api/pm/project-types/all
+		if rest == "all" && r.Method == http.MethodGet {
+			rows, err := db.Query(`
+				SELECT id, name, code, COALESCE(description,''), active, order_index
+				FROM pm_project_types ORDER BY order_index, name
+			`)
+			if err != nil {
+				jsonErr(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			defer rows.Close()
+			types := []PMProjectType{}
+			for rows.Next() {
+				var t PMProjectType
+				if err := rows.Scan(&t.ID, &t.Name, &t.Code, &t.Description, &t.Active, &t.OrderIndex); err != nil {
+					continue
+				}
+				types = append(types, t)
+			}
+			json.NewEncoder(w).Encode(types)
+			return
+		}
+
+		// POST /api/pm/project-types/  (criar)
+		if rest == "" && r.Method == http.MethodPost {
+			var req struct {
+				Name        string `json:"name"`
+				Code        string `json:"code"`
+				Description string `json:"description"`
+				OrderIndex  int    `json:"order_index"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				jsonErr(w, http.StatusBadRequest, "Invalid JSON")
+				return
+			}
+			if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Code) == "" {
+				jsonErr(w, http.StatusBadRequest, "name e code são obrigatórios")
+				return
+			}
+			var id string
+			err := db.QueryRow(`
+				INSERT INTO pm_project_types (name, code, description, order_index)
+				VALUES ($1,$2,$3,$4) RETURNING id
+			`, req.Name, req.Code, req.Description, req.OrderIndex).Scan(&id)
+			if err != nil {
+				jsonErr(w, http.StatusConflict, "Código já existe ou erro ao criar: "+err.Error())
+				return
+			}
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]string{"id": id})
+			return
+		}
+
+		// PUT /api/pm/project-types/{id}
+		if rest != "" && r.Method == http.MethodPut {
+			var req struct {
+				Name        string `json:"name"`
+				Description string `json:"description"`
+				Active      bool   `json:"active"`
+				OrderIndex  int    `json:"order_index"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				jsonErr(w, http.StatusBadRequest, "Invalid JSON")
+				return
+			}
+			_, err := db.Exec(`
+				UPDATE pm_project_types SET name=$1, description=$2, active=$3, order_index=$4 WHERE id=$5
+			`, req.Name, req.Description, req.Active, req.OrderIndex, rest)
+			if err != nil {
+				jsonErr(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]string{"ok": "true"})
+			return
+		}
+
+		// DELETE /api/pm/project-types/{id}
+		if rest != "" && r.Method == http.MethodDelete {
+			_, err := db.Exec(`DELETE FROM pm_project_types WHERE id=$1`, rest)
+			if err != nil {
+				jsonErr(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]string{"ok": "true"})
+			return
+		}
+
+		jsonErr(w, http.StatusNotFound, "Not found")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// PMUsersHandler — GET /api/pm/users?q=search  (busca usuários do ambiente)
+// ---------------------------------------------------------------------------
+
+func PMUsersHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		claims, ok := r.Context().Value(ClaimsKey).(jwt.MapClaims)
+		if !ok {
+			jsonErr(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		userID := claims["user_id"].(string)
+		q := "%" + r.URL.Query().Get("q") + "%"
+
+		rows, err := db.Query(`
+			SELECT DISTINCT u.id, u.full_name, u.email, COALESCE(u.pm_role,'')
+			FROM users u
+			JOIN user_environments ue ON ue.user_id = u.id
+			WHERE ue.environment_id IN (
+				SELECT environment_id FROM user_environments WHERE user_id = $1
+			)
+			AND (u.full_name ILIKE $2 OR u.email ILIKE $2)
+			ORDER BY u.full_name
+			LIMIT 20
+		`, userID, q)
+		if err != nil {
+			jsonErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer rows.Close()
+
+		type UserItem struct {
+			ID       string `json:"id"`
+			FullName string `json:"full_name"`
+			Email    string `json:"email"`
+			PmRole   string `json:"pm_role"`
+		}
+		users := []UserItem{}
+		for rows.Next() {
+			var u UserItem
+			if err := rows.Scan(&u.ID, &u.FullName, &u.Email, &u.PmRole); err != nil {
+				continue
+			}
+			users = append(users, u)
+		}
+		json.NewEncoder(w).Encode(users)
+	}
 }

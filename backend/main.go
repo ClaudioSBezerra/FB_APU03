@@ -1,6 +1,6 @@
 package main
 
-// FB_APU02 — Apuração Assistida + Receita Federal
+// FB_APU03 — Gestão de Projetos
 // Version: 1.0.0
 import (
 	"context"
@@ -17,16 +17,16 @@ import (
 	"syscall"
 	"time"
 
-	"fb_apu02/handlers"
-	"fb_apu02/services"
+	"fb_apu03/handlers"
+	"fb_apu03/services"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 const (
-	BackendVersion = "1.0.2"
-	FeatureSet     = "Apuração Assistida NF-e/CT-e, Receita Federal CBS/IBS, Créditos em Risco, Apelidos de Filiais"
+	BackendVersion = "1.0.0"
+	FeatureSet     = "Gestão de Projetos — Kanban, Backlog, Épicos, Sprints, Fases, Dashboard, Equipe"
 )
 
 func GetVersionInfo() string {
@@ -272,7 +272,7 @@ func main() {
 		response := HealthResponse{
 			Status:    "running",
 			Timestamp: time.Now().Format(time.RFC3339),
-			Service:   "FB_APU02 Apuração Assistida",
+			Service:   "FB_APU03 Gestão de Projetos",
 			Version:   BackendVersion,
 			Features:  FeatureSet,
 			Database:  fmt.Sprintf("%s (%s)", dbStatus, dbStats),
@@ -491,6 +491,9 @@ func main() {
 	http.HandleFunc("/api/pm/tasks/", withAuth(handlers.PMTasksHandler, ""))
 	http.HandleFunc("/api/pm/audio/", withAuth(handlers.PMAudioHandler, ""))
 	http.HandleFunc("/api/pm/attachments/", withAuth(handlers.PMAttachmentsHandler, ""))
+	http.HandleFunc("/api/pm/users", withAuth(handlers.PMUsersHandler, ""))
+	http.HandleFunc("/api/pm/project-types", withAuth(handlers.PMProjectTypesHandler, ""))
+	http.HandleFunc("/api/pm/project-types/", withAuth(handlers.PMProjectTypesAdminHandler, "admin"))
 
 	// Serve frontend static files (SPA — React Router)
 	// index.html: no-cache para que o browser sempre busque a versão atual após deploy.
@@ -523,9 +526,9 @@ func main() {
 		fmt.Println("Serving frontend from ./static")
 	}
 
-	fmt.Printf("FB_APU02 Apuração Assistida (Go) starting on port %s...\n", port)
+	fmt.Printf("FB_APU03 Gestão de Projetos (Go) starting on port %s...\n", port)
 	fmt.Println("==================================================")
-	fmt.Printf("   FB_APU02 BACKEND - %s\n", BackendVersion)
+	fmt.Printf("   FB_APU03 BACKEND - %s\n", BackendVersion)
 	fmt.Println("==================================================")
 
 	server := &http.Server{

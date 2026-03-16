@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -10,10 +10,11 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import {
-  Plus, LayoutKanban, LayoutDashboard, Users, Download, Loader2, Search
+  Plus, Download, Loader2, Search
 } from 'lucide-react'
 import { TaskDetailSheet } from '@/components/pm/TaskDetailSheet'
 import { CreateTaskDialog } from '@/components/pm/CreateTaskDialog'
+import { ProjectNav } from '@/components/pm/ProjectNav'
 import { type Task } from './ProjectKanban'
 import { cn } from '@/lib/utils'
 
@@ -47,7 +48,6 @@ const TYPE_LABELS: Record<string, string> = {
 export default function ProjectBacklog() {
   const { id: projectId } = useParams<{ id: string }>()
   const { token, companyId } = useAuth()
-  const navigate = useNavigate()
   const qc = useQueryClient()
   const authHeaders = { Authorization: `Bearer ${token}`, 'X-Company-ID': companyId ?? '' }
 
@@ -83,35 +83,14 @@ export default function ProjectBacklog() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
-      {/* Sub-header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <button onClick={() => navigate('/pm')} className="hover:text-foreground">Projetos</button>
-          <span>/</span>
-          <span className="font-semibold text-foreground truncate max-w-[200px]">{project?.name ?? '...'}</span>
-          <span>/</span>
-          <span>Backlog</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/kanban`)}>
-            <LayoutKanban className="h-3.5 w-3.5 mr-1" /> Kanban
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/dashboard`)}>
-            <LayoutDashboard className="h-3.5 w-3.5 mr-1" /> Dashboard
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/members`)}>
-            <Users className="h-3.5 w-3.5 mr-1" /> Equipe
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={exportBacklog}>
-            <Download className="h-3.5 w-3.5 mr-1" /> Excel
-          </Button>
-          <Button size="sm" className="h-7 text-xs" onClick={() => setCreating(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
-          </Button>
-        </div>
+      <ProjectNav projectId={projectId!} projectName={project?.name} />
+      <div className="flex justify-end gap-1">
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportBacklog}>
+          <Download className="h-3.5 w-3.5 mr-1" /> Excel
+        </Button>
+        <Button size="sm" className="h-7 text-xs" onClick={() => setCreating(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
+        </Button>
       </div>
 
       {/* Filters */}

@@ -1,6 +1,6 @@
 # Coolify Production Environment Variables Template
-# FB_APU01 - Sistema de Reforma Tributária
-# VERSÃO: 5.5.0
+# FB_APU03 - Gestão de Projetos
+# VERSÃO: 1.0.0
 
 # ========================================
 # APPLICATION SETTINGS
@@ -17,7 +17,7 @@ DB_HOST=your-hostinger-postgres-host
 DB_PORT=5432
 DB_USER=your_db_user
 DB_PASSWORD=your_secure_db_password
-DB_NAME=fiscal_db_prod
+DB_NAME=pm_db_prod
 DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
 
 # ========================================

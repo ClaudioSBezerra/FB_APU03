@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,8 +8,9 @@ import {
   PieChart, Pie, Cell, Tooltip as ChartTooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts'
-import { LayoutKanban, List, Users, Settings2, Download, Loader2, AlertTriangle } from 'lucide-react'
+import { Download, Loader2, AlertTriangle } from 'lucide-react'
 import { useAuth as useAuthCtx } from '@/contexts/AuthContext'
+import { ProjectNav } from '@/components/pm/ProjectNav'
 
 interface Dashboard {
   tasks_by_status: { key: string; count: number }[]
@@ -46,7 +47,6 @@ export default function ProjectDashboard() {
   const { id: projectId } = useParams<{ id: string }>()
   const { token, companyId } = useAuth()
   const { token: t2 } = useAuthCtx()
-  const navigate = useNavigate()
   const authHeaders = { Authorization: `Bearer ${token ?? t2}`, 'X-Company-ID': companyId ?? '' }
 
   const { data: project } = useQuery({
@@ -83,32 +83,11 @@ export default function ProjectDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
-      {/* Sub-header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <button onClick={() => navigate('/pm')} className="hover:text-foreground">Projetos</button>
-          <span>/</span>
-          <span className="font-semibold text-foreground truncate max-w-[200px]">{project?.name ?? '...'}</span>
-          <span>/</span>
-          <span>Dashboard</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/kanban`)}>
-            <LayoutKanban className="h-3.5 w-3.5 mr-1" /> Kanban
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/backlog`)}>
-            <List className="h-3.5 w-3.5 mr-1" /> Backlog
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => navigate(`/pm/${projectId}/members`)}>
-            <Users className="h-3.5 w-3.5 mr-1" /> Equipe
-          </Button>
-          <Button size="sm" className="h-7 text-xs" onClick={exportTasks}>
-            <Download className="h-3.5 w-3.5 mr-1" /> Exportar Excel
-          </Button>
-        </div>
+      <ProjectNav projectId={projectId!} projectName={project?.name} />
+      <div className="flex justify-end">
+        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={exportTasks}>
+          <Download className="h-3.5 w-3.5 mr-1" /> Exportar Excel
+        </Button>
       </div>
 
       {/* KPI Cards */}

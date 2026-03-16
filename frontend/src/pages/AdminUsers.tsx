@@ -34,6 +34,7 @@ interface User {
   is_verified: boolean;
   trial_ends_at: string;
   role: string;
+  pm_role: string;
   created_at: string;
   environment_id: string | null;
   environment_name: string | null;
@@ -42,6 +43,18 @@ interface User {
   company_id: string | null;
   company_name: string | null;
 }
+
+const PM_ROLES: { value: string; label: string }[] = [
+  { value: '',            label: 'Não definido' },
+  { value: 'sponsor',     label: 'Sponsor / Patrocinador' },
+  { value: 'pm',          label: 'Project Manager (PM)' },
+  { value: 'po',          label: 'Product Owner (PO)' },
+  { value: 'consultant',  label: 'Consultor' },
+  { value: 'developer',   label: 'Desenvolvedor' },
+  { value: 'key_user',    label: 'Key User' },
+  { value: 'functional',  label: 'Analista Funcional' },
+  { value: 'stakeholder', label: 'Stakeholder' },
+]
 
 interface HierarchyItem {
   id: string;
@@ -146,6 +159,7 @@ export default function AdminUsers() {
 
   // State for Promote/Edit
   const [newRole, setNewRole] = useState<string>("user");
+  const [newPmRole, setNewPmRole] = useState<string>("");
   const [extendDays, setExtendDays] = useState<number>(0);
   const [isOfficial, setIsOfficial] = useState<boolean>(false);
   const [showReassign, setShowReassign] = useState(false);
@@ -154,7 +168,7 @@ export default function AdminUsers() {
   const [reassignCompanyId, setReassignCompanyId] = useState("");
 
   // State for Create
-  const [newUser, setNewUser] = useState({ fullName: "", email: "", password: "", role: "user" });
+  const [newUser, setNewUser] = useState({ fullName: "", email: "", password: "", role: "user", pmRole: "" });
   const [hierarchyMode, setHierarchyMode] = useState<"new" | "existing">("new");
   const [createEnvId, setCreateEnvId] = useState("");
   const [createGroupId, setCreateGroupId] = useState("");
@@ -187,6 +201,7 @@ export default function AdminUsers() {
         email: data.email,
         password: data.password,
         role: data.role,
+        pm_role: data.pmRole,
       };
       if (hierarchyMode === "existing" && createEnvId) {
         body.environment_id = createEnvId;
@@ -216,7 +231,7 @@ export default function AdminUsers() {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       toast.success("Usuário criado com sucesso");
       setCreateDialogOpen(false);
-      setNewUser({ fullName: "", email: "", password: "", role: "user" });
+      setNewUser({ fullName: "", email: "", password: "", role: "user", pmRole: "" });
       setHierarchyMode("new");
       setCreateEnvId("");
       setCreateGroupId("");
@@ -226,14 +241,14 @@ export default function AdminUsers() {
   });
 
   const promoteMutation = useMutation({
-    mutationFn: async (data: { userId: string, role: string, extendDays: number, isOfficial: boolean }) => {
+    mutationFn: async (data: { userId: string, role: string, pmRole: string, extendDays: number, isOfficial: boolean }) => {
       const response = await fetch(`/api/admin/users/promote?id=${data.userId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ role: data.role, extend_days: data.extendDays, is_official: data.isOfficial })
+        body: JSON.stringify({ role: data.role, pm_role: data.pmRole, extend_days: data.extendDays, is_official: data.isOfficial })
       });
       if (!response.ok) throw new Error('Failed to update user');
       return response.json();
@@ -298,6 +313,7 @@ export default function AdminUsers() {
   const handleOpenPromote = (user: User) => {
     setSelectedUser(user);
     setNewRole(user.role);
+    setNewPmRole(user.pm_role ?? "");
     setExtendDays(0);
     setIsOfficial(false);
     setShowReassign(false);
@@ -321,6 +337,7 @@ export default function AdminUsers() {
     promoteMutation.mutate({
       userId: selectedUser.id,
       role: newRole,
+      pmRole: newPmRole,
       extendDays: extendDays,
       isOfficial: isOfficial
     });
@@ -351,6 +368,7 @@ export default function AdminUsers() {
               <TableHead className="text-[10px] uppercase tracking-wide py-1.5 px-2">Email</TableHead>
               <TableHead className="text-[10px] uppercase tracking-wide py-1.5 px-2">Status</TableHead>
               <TableHead className="text-[10px] uppercase tracking-wide py-1.5 px-2">Role</TableHead>
+              <TableHead className="text-[10px] uppercase tracking-wide py-1.5 px-2">Papel PM</TableHead>
               <TableHead className="text-[10px] uppercase tracking-wide py-1.5 px-2">Ambiente</TableHead>
               <TableHead className="text-[10px] uppercase tracking-wide py-1.5 px-2">Grupo</TableHead>
               <TableHead className="text-[10px] uppercase tracking-wide py-1.5 px-2">Empresa</TableHead>
@@ -375,6 +393,9 @@ export default function AdminUsers() {
                   <Badge variant={user.role === 'admin' ? "default" : "secondary"} className="text-[9px] px-1.5 py-0 h-4">
                     {user.role}
                   </Badge>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground py-1 px-2 whitespace-nowrap">
+                  {PM_ROLES.find(r => r.value === user.pm_role)?.label || <span className="italic">—</span>}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground py-1 px-2 whitespace-nowrap">
                   {user.environment_name || <span className="italic">—</span>}
@@ -459,6 +480,19 @@ export default function AdminUsers() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-xs">Papel no PM</Label>
+              <Select value={newUser.pmRole} onValueChange={(val) => setNewUser({...newUser, pmRole: val})}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecione o papel no projeto..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {PM_ROLES.map(r => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Hierarchy Section */}
             <div className="border-t pt-4 mt-2">
@@ -515,6 +549,19 @@ export default function AdminUsers() {
                 <SelectContent>
                   <SelectItem value="user">User</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-xs">Papel no PM</Label>
+              <Select value={newPmRole} onValueChange={setNewPmRole}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecione o papel no projeto..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {PM_ROLES.map(r => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
